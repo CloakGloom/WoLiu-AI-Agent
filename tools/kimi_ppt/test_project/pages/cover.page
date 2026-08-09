@@ -1,0 +1,14 @@
+elements:
+  - type: shape
+    position: [0, 0]
+    size: [960, 540]
+    shape:
+      preset: rectangle
+      fill: "#2B579A"
+  - type: text
+    position: [80, 180]
+    size: [800, 200]
+    content:
+      text: |
+        <p style="font-size:48px;font-weight:bold;color:#FFFFFF;">测试演示文稿</p>
+        <p style="font-size:24px;color:#FFD700;">使用 Kimi PPTD 格式生成</p>

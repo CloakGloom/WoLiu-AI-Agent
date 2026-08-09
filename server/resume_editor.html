@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>简历编辑器</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#1a1a20;color:#e0e0e0;display:flex;height:100vh}
+/* 编辑栏 */
+.toolbar{width:240px;min-width:200px;background:#141418;border-right:1px solid #2a2a35;padding:16px;display:flex;flex-direction:column;gap:12px}
+.toolbar h2{font-size:15px;color:#fff;margin-bottom:4px}
+.toolbar label{font-size:12px;color:#888;margin-bottom:-8px}
+.toolbar input,.toolbar select{width:100%;background:#25252f;border:1px solid #333;border-radius:6px;padding:8px;color:#fff;font-size:13px}
+.toolbar input:focus{outline:none;border-color:#6c5ce7}
+.toolbar button{width:100%;padding:10px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-color{background:#25252f;color:#aaa;border:1px solid #333}
+.btn-color:hover{color:#fff}
+.btn-export{background:linear-gradient(135deg,#6c5ce7,#a855f7);color:#fff}
+.btn-export:hover{transform:translateY(-1px)}
+.btn-export:disabled{opacity:.5;cursor:wait}
+.color-dots{display:flex;gap:6px;flex-wrap:wrap}
+.dot{width:22px;height:22px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .15s}
+.dot.active{border-color:#fff;transform:scale(1.15)}
+/* 主编辑区 */
+.main{flex:1;display:flex;justify-content:center;align-items:flex-start;overflow-y:auto;padding:24px}
+.page{width:210mm;min-height:297mm;background:#fff;color:#333;padding:20mm 18mm;box-shadow:0 4px 24px rgba(0,0,0,.5);position:relative;font-size:13px;line-height:1.7}
+/* 可编辑元素 */
+[contenteditable]{outline:none;transition:background .15s}
+[contenteditable]:hover{background:rgba(108,92,231,.08);border-radius:3px}
+[contenteditable]:focus{background:rgba(108,92,231,.12);border-radius:3px}
+[contenteditable][data-photo]:empty::before{content:attr(data-photo);color:#aaa;font-style:italic}
+/* 简历区块 */
+.resume-header{text-align:center;margin-bottom:20px;padding-bottom:16px;border-bottom:2px solid var(--accent,#2563eb)}
+.resume-header .name{font-size:26px;font-weight:700;margin-bottom:4px;color:var(--accent-dark,#1e40af)}
+.resume-header .contact{font-size:12px;color:#888}
+.resume-section{margin-bottom:16px}
+.resume-section h3{font-size:15px;font-weight:700;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid var(--accent-light,#e0e0e0);color:var(--accent,#2563eb)}
+.resume-item{margin-bottom:10px}
+.resume-item .item-header{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:2px}
+.resume-item .item-title{font-weight:600}
+.resume-item .item-date{font-size:12px;color:#aaa;min-width:120px;text-align:right}
+.resume-item .item-detail{font-size:12px;color:#666;line-height:1.6}
+.photo-area{width:80px;height:100px;border:2px dashed #ccc;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;float:right;margin-left:16px;margin-bottom:8px;overflow:hidden;transition:all .15s;font-size:11px;color:#aaa}
+.photo-area:hover{border-color:var(--accent,#6c5ce7)}
+.photo-area img{width:100%;height:100%;object-fit:cover}
+/* 编辑提示 */
+.edit-hint{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#6c5ce7;color:#fff;padding:6px 16px;border-radius:20px;font-size:12px;opacity:.9;pointer-events:none;transition:opacity .3s}
+.edit-hint.hidden{opacity:0}
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <h2>简历编辑器</h2>
+  <label>主题色</label>
+  <div class="color-dots" id="colorDots">
+    <span class="dot active" style="background:#2563eb" data-color="#2563eb" data-dark="#1e40af" data-light="#dbeafe"></span>
+    <span class="dot" style="background:#059669" data-color="#059669" data-dark="#065f46" data-light="#d1fae5"></span>
+    <span class="dot" style="background:#dc2626" data-color="#dc2626" data-dark="#991b1b" data-light="#fee2e2"></span>
+    <span class="dot" style="background:#7c3aed" data-color="#7c3aed" data-dark="#5b21b6" data-light="#ede9fe"></span>
+    <span class="dot" style="background:#d97706" data-color="#d97706" data-dark="#92400e" data-light="#fef3c7"></span>
+    <span class="dot" style="background:#0f172a" data-color="#333" data-dark="#111" data-light="#e0e0e0"></span>
+  </div>
+  <label>字号</label>
+  <select id="fontSize" onchange="changeFontSize(this.value)">
+    <option value="12px">小 (12px)</option>
+    <option value="13px" selected>中 (13px)</option>
+    <option value="14px">大 (14px)</option>
+  </select>
+  <label>页边距</label>
+  <select id="padding" onchange="changePadding(this.value)">
+    <option value="24mm 20mm">标准</option>
+    <option value="20mm 16mm" selected>紧凑</option>
+    <option value="16mm 12mm">密集</option>
+  </select>
+  <button class="btn-color" onclick="addSection()">+ 添加章节</button>
+  <button class="btn-color" onclick="addPhoto()">+ 添加照片</button>
+  <button class="btn-color" onclick="resetToDefault()">重置</button>
+  <button class="btn-export" onclick="saveAndExport()">导出 PDF</button>
+</div>
+
+<div class="main">
+  <div class="page" id="resumePage">
+    <div class="resume-header">
+      <div class="name" contenteditable="true" id="nameField">张 三</div>
+      <div class="contact" contenteditable="true" id="contactField">电话: 138-0000-0000 | 邮箱: zhang@example.com | 期望职位: 物联网工程师</div>
+    </div>
+    <div id="sections"></div>
+  </div>
+</div>
+
+<div class="edit-hint" id="editHint">💡 点击任意文字直接编辑</div>
+
+<script>
+// ======== 初始化 ========
+var sampleData = {
+  name: "张 三",
+  contact: "电话: 138-0000-0000 | 邮箱: zhang@example.com | 期望职位: 物联网工程师",
+  sections: [
+    {title:"教育背景", items:[
+      {title:"XX大学", date:"2020 - 2024", detail:"物联网工程 · 本科 · GPA 3.8/4.0 · 校级优秀毕业生\n主修课程: 嵌入式系统、传感器技术、计算机网络、数据结构"},
+    ]},
+    {title:"项目经历", items:[
+      {title:"智能家居控制系统", date:"2023.03 - 2023.06", detail:"• 基于ESP32和MQTT协议搭建了智能家居控制平台\n• 实现了温湿度传感器数据采集、远程开关控制\n• 后端使用Python FastAPI，前端React，数据库SQLite\n• 项目在学院创新创业大赛中获二等奖"},
+      {title:"物联网农业监测系统", date:"2022.10 - 2023.01", detail:"• 使用树莓派+多种传感器构建农业环境监测节点\n• 通过4G模块上传数据到云平台，实现远程监控\n• 设计低功耗方案，单次充电可持续运行72小时"},
+    ]},
+    {title:"技能", items:[
+      {title:"编程语言", date:"", detail:"Python / C / JavaScript / SQL"},
+      {title:"嵌入式", date:"", detail:"ESP32 / Arduino / 树莓派 / STM32"},
+      {title:"协议 & 平台", date:"", detail:"MQTT / Modbus / HTTP / LoRaWAN"},
+      {title:"工具 & 框架", date:"", detail:"FastAPI / React / Docker / Git"},
+    ]},
+    {title:"所获荣誉", items:[
+      {title:"全国大学生物联网设计竞赛", date:"2023", detail:"省级一等奖"},
+      {title:"校级优秀学生奖学金", date:"2022 - 2024", detail:"连续三年获得"},
+    ]},
+  ]
+};
+
+function loadData(data) {
+  document.getElementById('nameField').textContent = data.name;
+  document.getElementById('contactField').textContent = data.contact || '';
+  document.getElementById('sections').innerHTML = '';
+  (data.sections||[]).forEach(function(sec) { addSection(sec); });
+  applyAccent('#2563eb');
+}
+
+// ======== 主题色 ========
+document.querySelectorAll('#colorDots .dot').forEach(function(d){
+  d.onclick = function(){
+    document.querySelectorAll('#colorDots .dot').forEach(function(x){x.classList.remove('active')});
+    this.classList.add('active');
+    applyAccent(this.dataset.color);
+  };
+});
+
+function applyAccent(color) {
+  document.documentElement.style.setProperty('--accent', color);
+  document.documentElement.style.setProperty('--accent-dark', document.querySelector('#colorDots .dot.active')?.dataset.dark||color);
+  document.documentElement.style.setProperty('--accent-light', document.querySelector('#colorDots .dot.active')?.dataset.light||'#e0e0e0');
+}
+
+// ======== 章节管理 ========
+function addSection(secData) {
+  var div = document.createElement('div');
+  div.className = 'resume-section';
+  var title = secData?.title || '新章节';
+  var items = secData?.items || [];
+  div.innerHTML = '<h3 contenteditable="true">' + title + '</h3><div class="items"></div>';
+  var itemsDiv = div.querySelector('.items');
+  items.forEach(function(it){ addItem(itemsDiv, it); });
+  div.querySelector('h3').onkeydown = function(e){
+    if (e.key === 'Backspace' && !this.textContent.trim()) {
+      if (confirm('删除此章节？')) this.parentElement.remove();
+    }
+  };
+  document.getElementById('sections').appendChild(div);
+}
+
+function addItem(container, itemData) {
+  var div = document.createElement('div');
+  div.className = 'resume-item';
+  var title = itemData?.title || '标题';
+  var date = itemData?.date || '';
+  var detail = itemData?.detail || '';
+  div.innerHTML = '<div class="item-header">'
+    + '<span class="item-title" contenteditable="true">' + title + '</span>'
+    + '<span class="item-date" contenteditable="true">' + (date||'') + '</span>'
+    + '</div>'
+    + '<div class="item-detail" contenteditable="true">' + detail.replace(/\n/g,'<br>') + '</div>';
+  container.appendChild(div);
+}
+
+// ======== 照片 ========
+function addPhoto() {
+  var input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = function() {
+    var file = this.files[0];
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var area = document.querySelector('.photo-area');
+      if (!area) {
+        area = document.createElement('div');
+        area.className = 'photo-area';
+        var header = document.querySelector('.resume-header');
+        header.appendChild(area);
+      }
+      area.innerHTML = '<img src="' + e.target.result + '">';
+      area.onclick = function() {
+        if (this.querySelector('img')) {
+          if (!confirm('替换照片？')) return;
+          this.innerHTML = '';
+        }
+        addPhoto();
+      };
+    };
+    reader.readAsDataURL(file);
+  };
+  input.click();
+}
+
+// ======== 设置 ========
+function changeFontSize(sz) {
+  document.querySelector('.page').style.fontSize = sz;
+}
+function changePadding(p) {
+  document.querySelector('.page').style.padding = p;
+}
+
+// ======== 导出 ========
+function saveAndExport() {
+  var win = window.open('','_print');
+  var page = document.getElementById('resumePage');
+  var html = '<!DOCTYPE html><html><head><meta charset="utf-8"><title>简历</title>'
+    + '<style>@page{margin:0;size:210mm 297mm}body{margin:0;font-family:"Microsoft YaHei",sans-serif}'
+    + document.querySelector('style').textContent + '</style></head><body>'
+    + page.outerHTML + '</body></html>';
+  win.document.write(html);
+  win.document.close();
+  setTimeout(function(){ win.print(); }, 800);
+}
+
+function resetToDefault() {
+  if (!confirm('确认重置？所有编辑将丢失。')) return;
+  document.querySelector('.photo-area')?.remove();
+  loadData(sampleData);
+  applyAccent('#2563eb');
+  document.querySelector('#colorDots .dot').classList.add('active');
+  changeFontSize('13px');
+  changePadding('20mm 16mm');
+  document.getElementById('fontSize').value = '13px';
+  document.getElementById('padding').value = '20mm 16mm';
+}
+
+// ======== 提示 ========
+setTimeout(function() {
+  document.getElementById('editHint').classList.add('hidden');
+}, 5000);
+
+// ======== 从 URL 参数加载 AI 生成的简历 ========
+var params = new URLSearchParams(window.location.search);
+var loadId = params.get('load');
+
+if (loadId) {
+  fetch('/api/resume-editor/load/' + loadId)
+    .then(function(r){ return r.json(); })
+    .then(function(data){
+      document.title = (data.title || data.name || '简历') + ' - 编辑';
+      loadFromAI(data);
+    })
+    .catch(function(){ loadData(sampleData); });
+} else {
+  loadData(sampleData);
+}
+
+function loadFromAI(aiData) {
+  var sections = [];
+  document.getElementById('nameField').textContent = aiData.name || aiData.title || '';
+  var contact = [];
+  if (aiData.email) contact.push('邮箱: ' + aiData.email);
+  if (aiData.phone) contact.push('电话: ' + aiData.phone);
+  if (aiData.location) contact.push(aiData.location);
+  if (aiData.position) contact.push('期望: ' + aiData.position);
+  document.getElementById('contactField').textContent = contact.join(' | ');
+
+  if (aiData.summary) {
+    sections.push({title:'个人简介', items:[{title:'', date:'', detail:aiData.summary}]});
+  }
+  if (aiData.work_experience && aiData.work_experience.length) {
+    var items = aiData.work_experience.map(function(w){
+      var detail = (w.highlights||[]).map(function(h,i){ return '\u2022 ' + h; }).join('\n');
+      return {title: w.position, date: (w.start_date||'') + ' - ' + (w.end_date||'至今'), detail: w.company + '\n' + detail};
+    });
+    sections.push({title:'工作经历', items:items});
+  }
+  if (aiData.education && aiData.education.length) {
+    var items = aiData.education.map(function(e){
+      return {title: e.institution, date: (e.start_date||'') + ' - ' + (e.end_date||''), detail: (e.degree||'') + ' \u00b7 ' + (e.field||'')};
+    });
+    sections.push({title:'教育背景', items:items});
+  }
+  if (aiData.skills && aiData.skills.length) {
+    sections.push({title:'技能', items:[{title:'', date:'', detail: aiData.skills.join('\n')}]});
+  }
+  if (aiData.projects && aiData.projects.length) {
+    var items = aiData.projects.map(function(p){
+      return {title: p.name, date:'', detail: (p.description||'') + ((p.technologies||[]).length ? '\n' + p.technologies.join(' / ') : '')};
+    });
+    sections.push({title:'项目经历', items:items});
+  }
+
+  loadData({name: aiData.name || '', contact: contact.join(' | '), sections: sections});
+}
+</script>
+</body>
+</html>

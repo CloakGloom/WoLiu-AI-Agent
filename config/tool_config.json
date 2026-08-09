@@ -1,0 +1,7 @@
+{
+    "tools": {
+        "get_current_time": true,
+        "use_microphone": true,
+        "use_speaker": true
+    }
+}

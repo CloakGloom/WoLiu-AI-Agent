@@ -1,0 +1,13 @@
+{
+    "max_iterations": 10,
+    "migrate_timeout": 5,
+    "default_device": "pc",
+    "rag": {
+        "enabled": true,
+        "top_k": 3,
+        "threshold": 0.3,
+        "min_turns_before_retrieval": 10,
+        "collection_name": "agent_memory",
+        "embedding_model": "paraphrase-multilingual-MiniLM-L12-v2"
+    }
+}

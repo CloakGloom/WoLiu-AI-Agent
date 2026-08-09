@@ -1,0 +1,90 @@
+%!TEX program = xelatex
+% 中文论文通用模板 —— 使用 ctex 宏包
+
+\documentclass[12pt,a4paper]{ctexart}
+
+% ===== 页面设置 =====
+\usepackage[top=2.54cm, bottom=2.54cm, left=3.17cm, right=3.17cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+
+% ===== 字体设置 =====
+\setCJKmainfont{SimSun}[AutoFakeBold=2.5]
+\setCJKsansfont{SimHei}
+\setCJKmonofont{FangSong}
+
+% ===== 常用宏包 =====
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{caption}
+\usepackage{fancyhdr}
+\usepackage{titletoc}
+
+% ===== 页眉页脚 =====
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{\small\leftmark}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ===== 标题格式 =====
+\ctexset{
+    section = {
+        format = {\heiti\zihao{3}\centering},
+        beforeskip = 12pt,
+        afterskip = 6pt
+    },
+    subsection = {
+        format = {\heiti\zihao{4}},
+        beforeskip = 8pt,
+        afterskip = 4pt
+    },
+    subsubsection = {
+        format = {\heiti\zihao{-4}},
+        beforeskip = 6pt,
+        afterskip = 2pt
+    }
+}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    citecolor=black,
+    urlcolor=blue
+}
+
+% ===== 正文开始 =====
+\begin{document}
+
+% ===== 封面 =====
+\begin{titlepage}
+    \begin{center}
+        \vspace*{3cm}
+
+        {\heiti\zihao{1}\textbf{__TITLE__}}
+
+        \vspace{4cm}
+
+        {\songti\zihao{4}__AUTHOR__}
+
+        \vspace{2cm}
+
+        {\songti\zihao{4}\today}
+
+        \vspace{2cm}
+
+        {\songti\zihao{5}由 AI Agent 自动生成}
+
+    \end{center}
+\end{titlepage}
+
+% ===== 目录 =====
+\tableofcontents
+\newpage
+
+% ===== 正文内容 =====
+__CONTENT__
+
+\end{document}

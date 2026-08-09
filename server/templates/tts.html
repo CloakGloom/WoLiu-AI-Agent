@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TTS 语音合成</title>
+<style>
+:root{--bg:#f5f7fa;--card:#fff;--txt:#1a1a2e;--muted:#888;--accent:#6366f1;--border:#e0e0e0;--danger:#ef4444}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{background:var(--card);border-radius:16px;box-shadow:0 4px 32px rgba(0,0,0,.08);width:100%;max-width:520px;padding:28px 24px;display:flex;flex-direction:column;gap:20px}
+h1{font-size:20px;font-weight:700;text-align:center}
+.sub{font-size:12px;color:var(--muted);text-align:center;margin-top:-12px}
+.upload-zone{position:relative;border:2px dashed var(--border);border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:all .2s}
+.upload-zone:hover{border-color:var(--accent);background:rgba(99,102,241,.03)}
+.upload-zone.has-file{border-color:var(--accent);border-style:solid;background:rgba(99,102,241,.04)}
+.upload-zone input{display:none}
+.upload-icon{font-size:32px;margin-bottom:6px}
+.upload-text{font-size:13px;color:var(--muted)}
+.file-name{font-size:12px;color:var(--accent);font-weight:500;margin-top:4px}
+.row{display:flex;gap:10px}
+.row label{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:4px;display:block}
+textarea{flex:1;resize:none;border:2px solid var(--border);border-radius:10px;padding:10px 14px;font-size:14px;font-family:inherit;line-height:1.6;outline:none;transition:border-color .2s;min-height:60px}
+textarea:focus{border-color:var(--accent)}
+select{border:2px solid var(--border);border-radius:10px;padding:8px 12px;font-size:13px;outline:none;background:#fff;cursor:pointer;font-family:inherit}
+.btn{width:100%;padding:12px;border:none;border-radius:10px;background:var(--accent);color:#fff;font-size:15px;font-weight:600;cursor:pointer;transition:all .15s;font-family:inherit}
+.btn:hover{opacity:.9;transform:translateY(-1px)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn:active{transform:scale(.98)}
+.btn-loading{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.progress{height:4px;background:var(--border);border-radius:2px;overflow:hidden;display:none}
+.progress-bar{height:100%;background:var(--accent);width:0;transition:width .3s;border-radius:2px}
+.result{display:none;padding:12px;border-radius:10px;gap:8px}
+.result.success{display:flex;flex-direction:column;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3)}
+.result.error{display:flex;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:var(--danger);font-size:13px}
+audio{width:100%;margin-top:4px}
+.status{font-size:12px;color:var(--muted);text-align:center}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🎤 Confucius4-TTS</h1>
+  <div class="sub">零样本语音合成 · 14 种语言 · 声音克隆</div>
+
+  <div class="upload-zone" id="dropZone" onclick="document.getElementById('refFile').click()">
+    <div class="upload-icon">📁</div>
+    <div class="upload-text" id="dropText">点击或拖拽上传参考音频</div>
+    <div class="file-name" id="fileName"></div>
+    <input type="file" id="refFile" accept="audio/*" onchange="handleFile(this.files[0])">
+  </div>
+
+  <div><label>合成文本</label>
+    <textarea id="ttsText" placeholder="输入要合成的文字...">你好，欢迎使用语音合成系统，我是你的AI语音助手。</textarea>
+  </div>
+
+  <div style="display:flex;gap:10px">
+    <div style="flex:1"><label>语言</label>
+      <select id="ttsLang" style="width:100%">
+        <option value="zh">中文</option><option value="en">英文</option><option value="ja">日语</option>
+        <option value="ko">韩语</option><option value="de">德语</option><option value="fr">法语</option>
+      </select>
+    </div>
+    <div style="flex:1"><label>语速</label>
+      <select id="ttsSpeed" style="width:100%">
+        <option value="1.0">正常</option><option value="0.8">稍慢</option><option value="1.2">稍快</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="progress" id="progress"><div class="progress-bar" id="progressBar"></div></div>
+
+  <button class="btn" id="synthBtn" onclick="synthesize()">🎵 开始合成</button>
+
+  <div class="result" id="result">
+    <div style="font-size:13px;font-weight:600">✅ 合成完成</div>
+    <div style="font-size:11px;color:var(--muted)" id="resultMeta"></div>
+    <audio controls id="player"></audio>
+  </div>
+  <div class="status" id="status">TTS 服务 <span id="svcStatus">检测中...</span></div>
+</div>
+
+<script>
+var refFile=null;
+fetch('/api/tts/health').then(r=>r.json()).then(d=>{
+  document.getElementById('svcStatus').innerHTML='<span style="color:#10b981">✅ 在线</span> ('+d.sample_rate+'Hz)';
+}).catch(function(){document.getElementById('svcStatus').innerHTML='<span style="color:var(--danger)">❌ 离线</span>'});
+
+document.addEventListener('DOMContentLoaded',function(){
+  var dz=document.getElementById('dropZone');
+  dz.addEventListener('dragover',function(e){e.preventDefault();dz.style.borderColor='var(--accent)'});
+  dz.addEventListener('dragleave',function(){dz.style.borderColor=''});
+  dz.addEventListener('drop',function(e){e.preventDefault();dz.style.borderColor='';if(e.dataTransfer.files[0])handleFile(e.dataTransfer.files[0])});
+});
+
+function handleFile(f){
+  if(!f)return;refFile=f;
+  document.getElementById('fileName').textContent='📎 '+f.name+' ('+(f.size/1024).toFixed(0)+'KB)';
+  document.getElementById('dropZone').classList.add('has-file');
+  document.getElementById('dropText').textContent='点击更换参考音频';
+}
+
+function synthesize(){
+  if(!refFile){alert('请先上传参考音频');return}
+  var text=document.getElementById('ttsText').value.trim();
+  if(!text){alert('请输入合成文本');return}
+  var lang=document.getElementById('ttsLang').value;
+  var btn=document.getElementById('synthBtn');btn.disabled=true;btn.textContent='合成中...';btn.classList.add('btn-loading');
+  var prog=document.getElementById('progress'),bar=document.getElementById('progressBar');
+  prog.style.display='';bar.style.width='30%';
+  document.getElementById('result').className='result';document.getElementById('result').style.display='none';
+
+  var fd=new FormData();fd.append('text',text);fd.append('lang',lang);fd.append('reference',refFile);
+  fetch('/api/tts',{method:'POST',body:fd}).then(function(r){
+    bar.style.width='80%';
+    if(!r.ok)return r.json().then(function(d){throw new Error(d.detail||'HTTP '+r.status)});
+    return r.blob();
+  }).then(function(blob){
+    bar.style.width='100%';setTimeout(function(){prog.style.display='none'},500);
+    var url=URL.createObjectURL(blob);
+    document.getElementById('player').src=url;
+    document.getElementById('resultMeta').textContent='大小 '+(blob.size/1024).toFixed(0)+'KB';
+    document.getElementById('result').className='result success';document.getElementById('result').style.display='';
+    btn.disabled=false;btn.textContent='🎵 开始合成';btn.classList.remove('btn-loading');
+  }).catch(function(e){
+    prog.style.display='none';
+    document.getElementById('result').className='result error';document.getElementById('result').style.display='';
+    document.getElementById('result').innerHTML='❌ '+e.message;
+    btn.disabled=false;btn.textContent='🎵 重试';btn.classList.remove('btn-loading');
+  });
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+elements:
+  - type: shape
+    position: [0, 0]
+    size: [960, 540]
+    shape:
+      preset: rectangle
+      fill: "#2B579A"
+  - type: text
+    position: [0, 200]
+    size: [960, 100]
+    content:
+      text: |
+        <p style="font-size:44px;font-weight:bold;color:#FFFFFF;text-align:center;">感谢观看</p>
+  - type: shape
+    position: [380, 320]
+    size: [200, 4]
+    shape:
+      preset: rectangle
+      fill: "#E86A17"

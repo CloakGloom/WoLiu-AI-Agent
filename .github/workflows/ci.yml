@@ -1,0 +1,46 @@
+# AI Agent - CI 工作流
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: pip
+
+    - name: Install dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest pytest-cov pylint
+
+    - name: Syntax check
+      run: python -m compileall agent/ server/ -q
+
+    - name: Import check
+      run: |
+        python -c "
+        from agent.config import load; load()
+        from agent.utils import get_project_root; print('Imports OK')
+        "
+
+    - name: Unit tests
+      run: python -m pytest tests/ -v --cov=agent --cov-report=term
+
+    - name: Lint
+      run: python -m pylint agent/ --exit-zero --max-line-length=120

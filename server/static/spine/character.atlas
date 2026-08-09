@@ -1,0 +1,55 @@
+character_1.png
+	size: 2048, 2048
+	filter: Linear, Linear
+brow_right
+	bounds: 1845, 972, 194, 31
+eye_socket_left
+	bounds: 2, 1631, 212, 148
+eye_socket_right
+	bounds: 2, 1783, 211, 147
+hair_back
+	bounds: 2, 2, 1362, 1625
+hair_side_right_curled
+	bounds: 1368, 972, 473, 1049
+head_base
+	bounds: 1368, 2, 675, 966
+mouth_open
+	bounds: 2, 1934, 142, 70
+mouth_smile
+	bounds: 2, 2025, 140, 18
+mouth_unhappy
+	bounds: 146, 2025, 140, 18
+nose
+	bounds: 148, 1934, 41, 67
+
+character_2.png
+	size: 2048, 2048
+	filter: Linear, Linear
+accessory_left
+	bounds: 1580, 2, 271, 590
+accessory_right
+	bounds: 810, 593, 271, 590
+brow_left
+	bounds: 1855, 583, 191, 29
+hair_front_left
+	bounds: 801, 2, 386, 587
+hair_front_mid
+	bounds: 2, 1056, 480, 527
+hair_front_right
+	bounds: 1191, 2, 385, 588
+hair_side_left_curled
+	bounds: 2, 2, 471, 1050
+hair_side_left_princess
+	bounds: 486, 738, 320, 731
+hair_side_right_princess
+	bounds: 477, 2, 320, 732
+hair_top
+	bounds: 1855, 2, 162, 336
+highlight_left
+	bounds: 1957, 342, 63, 117
+highlight_right
+	bounds: 1957, 463, 62, 116
+pupil_left
+	bounds: 1855, 342, 98, 118
+pupil_right
+	bounds: 1085, 593, 98, 118

@@ -1,0 +1,94 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.spec
+.venv/
+venv/
+
+# Node
+node_modules/
+package-lock.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# AI Models (too large)
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.pth
+*.ckpt
+models/
+
+# ComfyUI assets
+ComfyUI_windows_portable/
+ComfyUI/
+input/
+output/
+temp/
+
+# Executables
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Logs & caches
+*.log
+logs/
+data/logs/
+data/tmp/
+Cache/
+.cache/
+
+# Data directories (generated at runtime)
+data/presenton_data/
+data/autolabel/
+data/outputs/
+
+# Anaconda (system Python, not project code)
+Anaconda/
+
+# Android
+android/app/build/
+android/build/
+android/.gradle/
+android/local.properties
+
+# Misc
+*.zip
+*.tar.gz
+*.7z
+converted_files/
+autolabel_crash.log
+
+# Third-party / embedded projects (not part of core code)
+side-projects/
+.launcher/
+tools/PPTAgent/
+tools/agent-browser-*/
+
+# Runtime data & private content (generated at runtime, contains personal data)
+data/
+.workbuddy/
+AI_Agent.exe

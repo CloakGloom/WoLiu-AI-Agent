@@ -1,0 +1,8 @@
+{
+  "name": "kimi-ppt-local",
+  "private": true,
+  "description": "Local PPTD to PPTX export using Kimi editor",
+  "dependencies": {
+    "agent-browser": "file:../agent-browser-0.33.2"
+  }
+}

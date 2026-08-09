@@ -1,0 +1,42 @@
+{
+    "behavior_rules": [
+        {
+            "rule": "驻地规则",
+            "description": "Agent 同时只能存在于一台设备上（电脑或手机）。已在目标设备时，不重复执行迁移。",
+            "enabled": true
+        },
+        {
+            "rule": "历史规则",
+            "description": "迁移时必须携带完整的对话历史，迁移后上下文连续。",
+            "enabled": true
+        },
+        {
+            "rule": "硬件规则",
+            "description": "Agent 只能调用当前所在设备的硬件资源，迁移后自动切换。",
+            "enabled": true
+        },
+        {
+            "rule": "响应规则",
+            "description": "迁移过程中 Agent 不响应任何新对话请求。",
+            "enabled": true
+        },
+        {
+            "rule": "默认驻地规则",
+            "description": "Agent 首次启动时的默认位置为电脑端。",
+            "enabled": true
+        },
+        {
+            "rule": "用户自主权规则",
+            "description": "用户可在任何时刻发起迁移指令，Agent 直接执行，不得反问确认。",
+            "enabled": true
+        },
+        {
+            "rule": "表情同步规则",
+            "description": "每次回复时，你必须根据回复内容中的情绪调用 set_expression 工具同步 2D Live 角色表情。开心/正面→happy，遗憾/负面→unhappy，中性→default。不要只在极端情况下调用，每次回复都应审视情绪。",
+            "enabled": true
+        }
+    ],
+    "max_iterations": 10,
+    "max_history_turns": 20,
+    "migrate_timeout_seconds": 5
+}

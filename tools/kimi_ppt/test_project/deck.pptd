@@ -1,0 +1,9 @@
+version: v2
+title: 测试PPT
+theme:
+  colors: ["#2B579A", "#E86A17", "#333333", "#FFFFFF", "#F0F2F5"]
+  defaultFont: MiSans
+pages:
+  - pages/cover.page
+  - pages/slide1.page
+  - pages/end.page

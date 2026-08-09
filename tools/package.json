@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "NeteaseCloudMusicApi": "^4.32.0"
+  }
+}

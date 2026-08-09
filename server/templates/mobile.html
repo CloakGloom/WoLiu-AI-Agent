@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <title>AI Agent</title>
+    <link rel="stylesheet" href="/static/mobile.css">
+    <style>
+        .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:20px;background:rgba(0,0,0,.75);color:#fff;font-size:13px;z-index:99999;pointer-events:none;opacity:0;transition:opacity .25s,transform .25s}
+        .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
+    </style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+    <!-- 顶部栏 -->
+    <div class="mobile-topbar">
+        <button class="menu-btn" onclick="toggleDrawer()">☰</button>
+        <span class="title" id="mobileTitle">AI Agent</span>
+        <button class="status-btn" id="mobileStatusBtn" onclick="toggleStatusPanel()" title="系统状态">
+            <span class="status-dot" id="mobileStatusDot"></span>
+        </button>
+    </div>
+
+    <!-- 系统状态面板（下拉） -->
+    <div class="status-panel" id="statusPanel">
+        <div class="status-row"><span class="label">Agent 位置</span><span class="value" id="infoLocation">电脑</span></div>
+        <div class="status-row"><span class="label">在线状态</span><span class="value" id="infoOnline">在线</span></div>
+        <div class="status-row"><span class="label">会话 ID</span><span class="value" id="infoSession" style="font-size:11px;">-</span></div>
+    </div>
+
+    <!-- 角色展示区（可折叠） -->
+    <div class="mobile-character" id="mobileCharacter">
+        <div class="spine-container" id="spineContainer">
+            <div id="spinePlayer"></div>
+        </div>
+        <div class="agent-name">AI Agent</div>
+        <div class="agent-device" id="agentDeviceText">当前在 电脑端</div>
+        <button class="character-toggle" onclick="toggleCharacter()" title="收起角色">▲</button>
+    </div>
+    <div class="character-collapsed" id="characterCollapsed" style="display:none">
+        <button class="character-expand" onclick="toggleCharacter()">🤖 展开角色 ▼</button>
+    </div>
+
+    <!-- 快捷操作栏 -->
+    <div class="mobile-quick-actions">
+        <button class="quick-btn" onclick="openServicesPanel()" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:0">⚙️ 服务</button>
+        <button class="quick-btn" onclick="openToolsLibrary()">📋 工具库</button>
+        <button class="quick-btn" onclick="openMemoryManager()">🧠 记忆</button>
+    </div>
+
+    <!-- 迁移进度条 -->
+    <div class="mobile-progress" id="mobileProgress" style="display:none">
+        <div class="mobile-progress-fill" id="mobileProgressFill"></div>
+    </div>
+
+    <!-- 音乐控制条 -->
+    <div class="mobile-music-bar" id="mobileMusicBar">
+        <span class="music-icon">♫</span>
+        <div class="music-info">
+            <span class="music-title" id="mobileMusicTitle">--</span>
+            <div class="music-progress-row">
+                <span class="music-time" id="mobileMusicTime">0:00</span>
+                <input type="range" class="music-slider" id="mobileMusicSlider" min="0" max="100" value="0" oninput="onMobileMusicSeek(this.value)" onchange="onMobileMusicSeekEnd()">
+                <span class="music-time" id="mobileMusicDuration">0:00</span>
+            </div>
+        </div>
+        <div class="music-controls">
+            <button class="music-btn" title="上一首" onclick="mobileMusicAction('prev')">⏮</button>
+            <button class="music-btn music-btn-play" id="mobileMusicBtnPlay" title="暂停/播放" onclick="toggleMobileMusicPlay()">⏯</button>
+            <button class="music-btn" title="下一首" onclick="mobileMusicAction('next')">⏭</button>
+            <button class="music-btn music-btn-close" title="关闭" onclick="closeMobileMusicBar()">✕</button>
+        </div>
+    </div>
+
+    <!-- 会话抽屉 -->
+    <div class="drawer-overlay" id="drawerOverlay" onclick="toggleDrawer()"></div>
+    <div class="session-drawer" id="sessionDrawer">
+        <div class="drawer-header">
+            <h3>会话列表</h3>
+            <div style="display:flex;gap:4px;">
+                <button class="new-btn" onclick="toggleSelectMode()" title="批量管理" style="font-size:11px;">☑</button>
+                <button class="new-btn" onclick="mobileNewSession()" title="新建会话">+</button>
+            </div>
+        </div>
+        <div class="drawer-list" id="mobileSessionList"></div>
+        <div class="batch-bar" id="mobileBatchBar">
+            <button class="select-all" onclick="toggleSelectAll()">全选</button>
+            <span class="batch-count" id="mobileBatchCount">已选 0 项</span>
+            <button class="batch-delete" id="mobileBatchDeleteBtn" onclick="batchDelete()" disabled>批量删除</button>
+        </div>
+        <div class="drawer-footer">
+            <button onclick="clearMobileChat()" style="width:100%;padding:8px;border:1px solid var(--danger);border-radius:6px;background:#fff;color:var(--danger);font-size:12px;font-family:inherit;">
+                清空聊天记录
+            </button>
+        </div>
+    </div>
+
+    <!-- 主布局 -->
+    <div class="mobile-main">
+        <!-- 聊天区域 -->
+        <div class="mobile-chat" id="mobileChat">
+            <div class="welcome">
+                <div class="welcome-icon">🤖</div>
+                <h3>欢迎使用 AI Agent</h3>
+                <p>Agent 当前在电脑端运行<br>输入消息开始对话</p>
+            </div>
+        </div>
+
+        <!-- 输入提示 -->
+        <div class="input-hint">回车发送 · 换行用 Shift+Enter</div>
+
+        <!-- 输入区 -->
+        <div class="mobile-input-area">
+            <input type="file" id="mobileFileInput" style="display:none" onchange="onMobileFileSelected(this)" multiple accept=".txt,.md,.docx,.pdf,.csv,.json,.py,.js,.html,.xml,.yaml,.yml,.ini,.cfg,.log,.css,.java,.c,.cpp,.h,.rs,.go,.ts,.sh,.bat,.ps1">
+            <input type="file" id="mobileCameraInput" style="display:none" onchange="onMobileCameraCapture(this)" accept="image/*" capture="environment">
+            <button class="btn-upload" id="mobileUploadBtn" onclick="document.getElementById('mobileFileInput').click()" disabled title="上传文件">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </button>
+            <button class="btn-camera" id="mobileCameraBtn" onclick="openMobileCamera()" disabled title="拍照">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </button>
+            <textarea id="mobileInput" placeholder="输入消息..." rows="1" disabled></textarea>
+            <button class="send-btn" id="mobileSendBtn" onclick="mobileSend()" disabled>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+        </div>
+    </div>
+
+    <!-- 拍照弹窗（使用 getUserMedia，避免页面被杀死） -->
+    <div id="cameraModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#000;z-index:9998;flex-direction:column">
+        <video id="cameraPreview" autoplay playsinline style="width:100%;flex:1;object-fit:cover"></video>
+        <canvas id="cameraCanvas" style="display:none"></canvas>
+        <div style="display:flex;justify-content:center;align-items:center;gap:20px;padding:16px;background:#000">
+            <button onclick="closeCamera()" style="width:48px;height:48px;border:none;background:rgba(255,255,255,0.2);color:#fff;border-radius:50%;font-size:20px;cursor:pointer">✕</button>
+            <button onclick="capturePhoto()" style="width:64px;height:64px;border:3px solid #fff;background:rgba(255,255,255,0.3);border-radius:50%;cursor:pointer"></button>
+            <button onclick="switchCamera()" style="width:48px;height:48px;border:none;background:rgba(255,255,255,0.2);color:#fff;border-radius:50%;font-size:18px;cursor:pointer">⟳</button>
+        </div>
+    </div>
+
+    <!-- 论文编辑弹窗 -->
+    <div id="paperEditModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+        <div style="background:#fff;border-radius:12px;width:94%;max-width:900px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e0e0e0">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-size:15px;font-weight:600">✏️ 修改论文内容</span>
+                    <span id="paperEditFormat" style="font-size:11px;padding:2px 8px;border-radius:10px;background:#e3f2fd;color:#1565c0">Markdown</span>
+                </div>
+                <button onclick="closePaperEdit()" style="font-size:20px;background:none;border:none;cursor:pointer;color:#999;line-height:1">&times;</button>
+            </div>
+            <div style="padding:12px 16px;flex:1;overflow-y:auto">
+                <label style="font-size:12px;color:#666;margin-bottom:4px;display:block">标题</label>
+                <input id="paperEditTitle" type="text" style="width:100%;padding:8px 10px;border:1px solid #d0d0d0;border-radius:6px;font-size:14px;margin-bottom:12px;box-sizing:border-box" placeholder="论文标题">
+                <label style="font-size:12px;color:#666;margin-bottom:4px;display:block">正文（Markdown 格式）</label>
+                <textarea id="paperEditContent" style="width:100%;height:40vh;padding:10px;border:1px solid #d0d0d0;border-radius:6px;font-size:13px;font-family:Consolas,monospace;line-height:1.6;resize:vertical;box-sizing:border-box" placeholder="论文内容..."></textarea>
+            </div>
+            <div style="display:flex;justify-content:flex-end;padding:10px 16px;border-top:1px solid #e0e0e0;gap:8px">
+                <button onclick="closePaperEdit()" style="padding:8px 16px;border:1px solid #d0d0d0;background:#fff;border-radius:6px;cursor:pointer;font-size:13px">取消</button>
+                <button id="paperRegenerateBtn" onclick="regeneratePaper()" style="padding:8px 16px;border:none;background:#4a90d9;color:#fff;border-radius:6px;cursor:pointer;font-size:13px">重新生成</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 工具库弹窗 -->
+    <div id="toolsModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+        <div style="background:#fff;border-radius:12px;width:94%;max-width:800px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e0e0e0">
+                <div style="display:flex;align-items:center;gap:8px">
+                    <span style="font-size:15px;font-weight:600">📋 工具库</span>
+                    <span id="toolsCount" style="font-size:11px;color:#999"></span>
+                </div>
+                <button onclick="closeToolsLibrary()" style="font-size:20px;background:none;border:none;cursor:pointer;color:#999;line-height:1">&times;</button>
+            </div>
+            <div style="padding:6px 12px;border-bottom:1px solid #f0f0f0;display:flex;gap:4px;flex-wrap:wrap">
+                <button class="tool-filter-btn" data-cat="all" onclick="filterTools('all')" style="padding:3px 10px;border-radius:12px;border:1px solid #4a90d9;background:#4a90d9;color:#fff;cursor:pointer;font-size:11px">全部</button>
+                <button class="tool-filter-btn" data-cat="builtin" onclick="filterTools('builtin')" style="padding:3px 10px;border-radius:12px;border:1px solid #d0d0d0;background:#fff;color:#666;cursor:pointer;font-size:11px">内置</button>
+                <button class="tool-filter-btn" data-cat="hardware" onclick="filterTools('hardware')" style="padding:3px 10px;border-radius:12px;border:1px solid #d0d0d0;background:#fff;color:#666;cursor:pointer;font-size:11px">硬件</button>
+                <button class="tool-filter-btn" data-cat="custom" onclick="filterTools('custom')" style="padding:3px 10px;border-radius:12px;border:1px solid #d0d0d0;background:#fff;color:#666;cursor:pointer;font-size:11px">自定义</button>
+                <button class="tool-filter-btn" data-cat="ai_custom" onclick="filterTools('ai_custom')" style="padding:3px 10px;border-radius:12px;border:1px solid #d0d0d0;background:#fff;color:#666;cursor:pointer;font-size:11px">AI自定义</button>
+            </div>
+            <div id="toolsList" style="padding:12px 16px;overflow-y:auto;flex:1">
+                <div style="text-align:center;color:#999;padding:40px">加载中...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 服务管理弹窗 -->
+    <div id="servicesModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+        <div style="background:#fff;border-radius:12px;width:92%;max-width:400px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #e0e0e0">
+                <span style="font-size:15px;font-weight:600">⚙️ 服务管理</span>
+                <button onclick="closeServicesPanel()" style="font-size:20px;background:none;border:none;cursor:pointer;color:#999;line-height:1">&times;</button>
+            </div>
+            <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:14px">
+                <div style="border:1px solid #e8e8e8;border-radius:8px;padding:12px">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+                        <strong style="font-size:13px">🎨 AI 绘画</strong>
+                        <span id="comfyui-status" style="font-size:10px;color:#999;">点击按钮开启</span>
+                    </div>
+                    <button id="comfyui-btn" class="comfyui-btn off" onclick="toggleComfyUI()" style="font-size:12px;padding:4px 12px">未启动</button>
+                </div>
+                <div style="border:1px solid #e8e8e8;border-radius:8px;padding:12px">
+                    <strong style="font-size:13px">🔊 TTS 语音合成</strong>
+                    <span style="font-size:10px;color:#999;display:block;margin-top:2px">Confucius4-TTS · 14语言</span>
+                </div>
+                <div style="border:1px solid #e8e8e8;border-radius:8px;padding:12px">
+                    <strong style="font-size:13px">📋 JadeAI</strong>
+                    <span style="font-size:10px;color:#999;display:block;margin-top:2px">AI简历 + 模拟面试</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 记忆管理弹窗 -->
+    <div id="memoryModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
+        <div style="background:#fff;border-radius:12px;width:92%;max-width:420px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column">
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #eee">
+                <span style="font-size:15px;font-weight:600">🧠 记忆管理</span>
+                <span id="memTotal" style="font-size:11px;color:#999"></span>
+                <button onclick="closeMemoryManager()" style="background:none;border:none;font-size:20px;color:#999">&times;</button>
+            </div>
+            <div style="display:flex;gap:4px;padding:6px 12px;border-bottom:1px solid #f0f0f0;align-items:center">
+                <input id="memSearchInput" placeholder="输入关键词筛选..." style="flex:1;padding:6px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px" oninput="memSearch()">
+                <span id="memSearchHint" style="font-size:10px;color:#999;white-space:nowrap"></span>
+                <button onclick="memToggleSelectAll()" id="memSelectAllBtn" style="font-size:11px;padding:3px 8px;border:1px solid #ddd;border-radius:4px;background:#fff;white-space:nowrap">全选</button>
+                <button onclick="memDeleteSelected()" id="memDeleteBtn" disabled style="font-size:11px;padding:3px 8px;border:1px solid #ef4444;border-radius:4px;background:#fff;color:#ef4444;white-space:nowrap">删除</button>
+            </div>
+            <div id="memDeleteList" style="padding:8px 12px;overflow-y:auto;flex:1"><div style="text-align:center;color:#999;padding:30px">加载中...</div></div>
+        </div>
+    </div>
+
+    <script src="/static/mobile.js"></script>
+</body>
+</html>

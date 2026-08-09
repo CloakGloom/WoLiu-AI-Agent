@@ -1,0 +1,27 @@
+elements:
+  - type: shape
+    position: [0, 0]
+    size: [960, 80]
+    shape:
+      preset: rectangle
+      fill: "#2B579A"
+  - type: text
+    position: [60, 15]
+    size: [840, 50]
+    content:
+      text: |
+        <p style="font-size:28px;font-weight:bold;color:#FFFFFF;">第一页 - 内容标题</p>
+  - type: text
+    position: [80, 140]
+    size: [800, 300]
+    content:
+      text: |
+        <p style="font-size:20px;color:#333333;">• 这是第一条要点内容</p>
+        <p style="font-size:20px;color:#333333;">• 这是第二条要点内容</p>
+        <p style="font-size:20px;color:#333333;">• 这是第三条要点内容</p>
+  - type: shape
+    position: [0, 535]
+    size: [960, 5]
+    shape:
+      preset: rectangle
+      fill: "#E86A17"

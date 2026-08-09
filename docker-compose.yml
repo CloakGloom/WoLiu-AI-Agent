@@ -1,0 +1,45 @@
+# ==============================
+# AI Agent - 外部服务编排
+# ComfyUI 为便携版（Windows 原生），不纳入 Docker
+# ==============================
+
+version: "3.9"
+
+services:
+
+  # ── Ollama 本地 LLM ──
+  ollama:
+    image: ollama/ollama:latest
+    container_name: agent-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+      - ${OLLAMA_MODELS_DIR:-./data/ollama_models}:/models
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_HOST=0.0.0.0
+    restart: unless-stopped
+    profiles:
+      - ollama
+
+  # ── 可选：本地 PostgreSQL（未来扩展） ──
+  # postgres:
+  #   image: postgres:16-alpine
+  #   container_name: agent-postgres
+  #   ports:
+  #     - "5432:5432"
+  #   environment:
+  #     POSTGRES_DB: agent
+  #     POSTGRES_USER: agent
+  #     POSTGRES_PASSWORD: agent
+  #   volumes:
+  #     - pg_data:/var/lib/postgresql/data
+  #   profiles:
+  #     - db
+
+volumes:
+  ollama_data:
+
+# 使用方式：
+# docker compose --profile ollama up -d

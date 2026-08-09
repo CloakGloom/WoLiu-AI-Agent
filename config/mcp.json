@@ -1,0 +1,23 @@
+{
+  "_note": "MCP 服务模块现由 agent/mcp_modules/ 自动发现，此文件保留用作外部 IDE/MCP 客户端配置参考",
+  "mcpServers": {
+    "ai-agent-local": {
+      "command": "python",
+      "args": ["-m", "agent.mcp_server"],
+      "description": "AI Agent 内置工具集 - 30+ 系统/搜索/绘画/文档/AI 工具",
+      "cwd": "."
+    },
+    "agent-browser": {
+      "command": "npx",
+      "args": ["agent-browser", "mcp", "--tools", "core,network"],
+      "description": "浏览器自动化 MCP Server"
+    },
+    "spine2d": {
+      "command": "python",
+      "args": ["-m", "spine2d_mcp.server"],
+      "cwd": "./side-projects/spine2d-animation-mcp-main",
+      "description": "PSD 转 Spine 2D 动画 MCP Server",
+      "enabled": false
+    }
+  }
+}

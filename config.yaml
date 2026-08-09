@@ -1,0 +1,163 @@
+# ═══════════════════════════════════════════════════════════════
+# AI Agent 统一配置文件
+# 复制为 config.local.yaml 做本地定制（不受 Git 追踪）
+# ═══════════════════════════════════════════════════════════════
+
+# ── 项目根路径（自动检测，通常无需修改） ──
+project:
+  root: .
+  data_dir: data
+  output_dir: converted_files
+
+# ── Python 环境 ──
+python:
+  executable: "${PYTHON_EXE}"         # 空则默认用 sys.executable
+  base_python: "${BASE_PYTHON}"       # 系统级 Python（用于创建虚拟环境）
+  torch_lib: ""                       # torch CUDA DLL 路径（自动检测）
+
+# ── Web 服务 ──
+server:
+  host: "0.0.0.0"
+  port: 8081
+  ws_port: 8765
+  cors_origins: ["*"]
+
+# ── LLM ──
+llm:
+  provider: siliconflow
+  api_key: "${SILICONFLOW_API_KEY}"
+  base_url: "https://api.siliconflow.cn/v1"
+  model: "Pro/deepseek-ai/DeepSeek-V3"
+  max_tokens: 4096
+  temperature: 0.7
+
+# ── 视觉模型 ──
+vision:
+  api_key: "${VISION_API_KEY}"
+  base_url: "${VISION_BASE_URL}"
+  model: "${VISION_MODEL}"
+
+# ── 外部服务 ──
+services:
+
+  comfyui:
+    enabled: true
+    host: "127.0.0.1"
+    port: 8188
+    install_dir: ""
+
+  tts:
+    enabled: false
+    type: chattts                     # chattts | confucius4
+    chattts:
+      host: "127.0.0.1"
+      port: 8001
+    confucius4:
+      host: "127.0.0.1"
+      port: 8000
+      project_dir: "side-projects/Confucius4-TTS"
+
+  ollama:
+    enabled: false
+    host: "127.0.0.1"
+    port: 11434
+    executable: "D:/Ollama/ollama.exe"
+    models_dir: "D:/Ollama/models"
+    vision_model: "qwen3-vl:4b"
+
+  jadeai:
+    enabled: false
+    install_dir: "side-projects/JadeAI-0.4.1"
+    host: "127.0.0.1"
+    port: 3000
+    api_path: "/jade/api"
+    editor_path: "/resume-editor"
+
+  weixin_bridge:
+    enabled: true
+    proxy_port: 17890
+
+  autolabel:
+    enabled: false
+    project_dir: "side-projects/autolabel-dock-main"
+
+# ── 第三方工具路径 ──
+external:
+  ffmpeg_paths:
+    - "C:/ffmpeg/bin/ffmpeg.exe"
+    - "D:/ffmpeg/bin/ffmpeg.exe"
+  latex_paths:
+    - "D:/xuexi/Basic/miktex/bin/x64/pdflatex.exe"
+    - "C:/texlive/2024/bin/windows/pdflatex.exe"
+    - "C:/texlive/2025/bin/windows/pdflatex.exe"
+    - "C:/texlive/2026/bin/windows/pdflatex.exe"
+  mpv_paths:
+    - "C:/Program Files/MPV Player/mpv.exe"
+    - "C:/Program Files (x86)/MPV Player/mpv.exe"
+  node_paths:
+    - "D:/xuexi/iotapp/iot/nodejs/node.exe"
+    - "C:/Program Files/nodejs/node.exe"
+  ncm_cli_paths:
+    - "D:/xuexi/iotapp/iot/nodejs/node_global/ncm-cli.cmd"
+  modelscope_cache: "D:/Downloads/models"
+
+# ── ComfyUI 工作流参数 ──
+generation:
+  i2v_width: 640
+  i2v_height: 640
+  t2v_width: 864
+  t2v_height: 480
+  video_fps: 24
+  video_timeout: 1800
+
+# ── 迁移 ──
+migration:
+  timeout_seconds: 5
+
+# ── 自启动服务 ──
+autostart:
+  comfyui: true
+  tts: false
+  jadeai: false
+  ollama: false
+  autolabel: false
+
+# ── 文件处理 ──
+upload:
+  max_size_mb: 500
+  allowed_extensions:
+    - pdf;docx;pptx;txt;py;js;json;yaml;yml;md;csv;png;jpg;jpeg;gif;webp;mp4;mp3;wav;zip
+
+# ── 外链 API ──
+apis:
+  exa_search: "https://api.exa.ai/search"
+  jina_reader: "https://r.jina.ai"
+  weather: "https://uapis.cn/api/v1/misc/weather"
+  huggingface_mirror: "https://hf-mirror.com"
+
+# ── 模型下载 URL（HuggingFace） ──
+models:
+  minimax_h3: "https://huggingface.co/Comfy-Org/MiniMax-H3"
+  z_image_turbo:
+    unet: "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/unet.safetensors"
+    vae: "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/vae.safetensors"
+    clip: "https://huggingface.co/Comfy-Org/z_image_turbo/resolve/main/clip.safetensors"
+
+# ── 微信桥接 ──
+weixin:
+  ilink_base: "https://ilinkai.weixin.qq.com"
+  cdn_base: "https://novac2c.cdn.weixin.qq.com/c2c"
+
+# ── MCP 协议 ──
+mcp:
+  enabled: true                      # 主开关：关闭后所有工具回退到直连模式
+  local_server: true                 # Phase 1: 本地 MCP Server (stdio/SSE)
+  remote_servers: true               # Phase 3: 外部 MCP Server 连接
+  config_file: "config/mcp.json"     # MCP Server 配置文件路径
+  fallback: direct                   # MCP 不可用时的回退模式: direct | error
+
+# ── 日志 ──
+logging:
+  level: INFO
+  dir: logs
+  max_files: 10

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AI Agent</string>
+    <string name="setup_title">连接服务器</string>
+    <string name="server_hint">输入电脑 IP 地址和端口</string>
+    <string name="connect_btn">连接</string>
+    <string name="last_server">上次连接</string>
+    <string name="connecting">正在连接…</string>
+    <string name="error_connect">连接失败，请检查地址和网络</string>
+    <string name="menu_settings">设置</string>
+    <string name="menu_refresh">刷新</string>
+    <string name="menu_clear">清空记录</string>
+</resources>

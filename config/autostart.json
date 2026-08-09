@@ -1,0 +1,7 @@
+{
+    "comfyui": true,
+    "tts": false,
+    "jadeai": false,
+    "ollama": false,
+    "autolabel": false
+}

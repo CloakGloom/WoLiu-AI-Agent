@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <item
+        android:id="@+id/action_refresh"
+        android:title="刷新"
+        android:icon="@android:drawable/ic_menu_rotate"
+        app:showAsAction="ifRoom" />
+    <item
+        android:id="@+id/action_settings"
+        android:title="设置"
+        android:icon="@android:drawable/ic_menu_preferences"
+        app:showAsAction="never" />
+    <item
+        android:id="@+id/action_clear"
+        android:title="清空聊天记录"
+        app:showAsAction="never" />
+</menu>

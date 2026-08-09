@@ -1,0 +1,49 @@
+# ==================== Web 服务器 ====================
+# Flask 已迁移至 FastAPI（2026-08-07）
+fastapi>=0.110
+uvicorn[standard]>=0.27
+python-multipart>=0.0.9   # UploadFile / 表单解析
+websockets>=12.0         # WebSocket 服务端（uvicorn[standard] 已含，显式声明以防万一）
+
+# ==================== LLM & API ====================
+openai>=1.0,<2.0
+tavily-python>=0.7
+python-dotenv>=1.0
+
+# ==================== 网络与通信 ====================
+requests>=2.28
+websocket-client>=1.6
+httpx>=0.27               # JadeAI 反向代理（async HTTP client）
+
+# ==================== 文档处理 ====================
+python-pptx>=1.0
+python-docx>=1.1
+pydantic>=2.0
+pymupdf>=1.24              # PDF 渲染为图片（简历视觉排版质检）
+
+# ==================== AI 记忆系统 ====================
+chromadb>=0.5
+sentence-transformers>=2.0
+
+# ==================== 数据库迁移 ====================
+alembic>=1.19
+
+# ==================== 配置加载 ====================
+PyYAML>=6.0                  # 统一配置 config.yaml
+
+# ==================== PPT Agent (可选，仅 WSL 环境需要) ====================
+# pyyaml  # 已移到上面
+# html2image
+# pdf2image
+# json-repair
+# tenacity
+# python-Levenshtein
+# lxml
+# beautifulsoup4
+# pillow
+
+# ==================== 工具 ====================
+# sounddevice  # 麦克风检测
+# pyaudio      # 麦克风检测 (备选)
+# pydub        # 音乐播放控制
+# pillow       # 图像处理
