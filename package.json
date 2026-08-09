@@ -1,5 +1,29 @@
 {
   "dependencies": {
+    "agent-browser": "^0.27.0",
     "docx": "^9.7.1"
-  }
+  },
+  "name": "agent",
+  "version": "1.0.0",
+  "description": "个人 AI 伴侣 —— FastAPI + WebSocket 后端、ReAct Agent 循环、15 维演化人格、MCP 可插拔工具体系、长期向量记忆。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CloakGloom/WoLiu-AI-Agent.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/CloakGloom/WoLiu-AI-Agent/issues"
+  },
+  "homepage": "https://github.com/CloakGloom/WoLiu-AI-Agent#readme"
 }

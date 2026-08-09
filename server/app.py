@@ -114,13 +114,13 @@ async def startup_mcp():
     except Exception as e:
         print(f"[人格] 初始化失败: {e}", flush=True)
 
-    # 初始化提醒调度器 + 绑定 WS 推送
+    # 初始化提醒调度器
     try:
-        from agent.tools.custom.reminder import start_scheduler, set_push
-        set_push(_broadcast_reminder)
+        from agent.tools.custom.reminder import start_scheduler
         start_scheduler()
+        logger.info("[提醒] 调度器已启动")
     except Exception as e:
-        print(f"[提醒] 初始化失败: {e}", flush=True)
+        logger.error(f"[提醒] 初始化失败: {e}")
 
 @app.on_event("shutdown")
 async def shutdown_mcp():
@@ -1038,6 +1038,24 @@ async def api_drawing_models_download(request: Request):
         return {"success": True, "path": dest, "size": downloaded, "source": "url"}
     except Exception as e:
         return {"error": f"URL 下载失败: {e}"}
+
+
+@app.post("/api/open-folder")
+async def api_open_folder(request: Request):
+    """在资源管理器中打开指定目录"""
+    data = await request.json()
+    path = (data.get("path", "") or "").strip()
+    if not path:
+        return {"error": "路径为空"}
+    target = os.path.join(project_root(), path) if not os.path.isabs(path) else path
+    if os.path.isdir(target):
+        os.startfile(target)
+        return {"ok": True}
+    parent = os.path.dirname(target)
+    if os.path.isdir(parent):
+        os.startfile(parent)
+        return {"ok": True}
+    return {"error": f"目录不存在: {target}"}
 
 
 @app.get("/api/services/installed")

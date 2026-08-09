@@ -122,6 +122,7 @@ phone_cam = _safe_import("agent.tools.hardware.phone.camera", "phone_cam")
 music_control = _safe_import("agent.tools.custom.music_control", "music_control")
 character_expression = _safe_import("agent.tools.custom.character_expression", "character_expression")
 image_generation = _safe_import("agent.tools.custom.image_generation", "image_generation")
+reminder = _safe_import("agent.tools.custom.reminder", "reminder")
 paper_generator = _safe_import("agent.tools.custom.paper_generator", "paper_generator")
 file_reader = _safe_import("agent.tools.custom.file_reader", "file_reader")
 ppt_generator = _safe_import("agent.tools.custom.ppt_generator", "ppt_generator")
@@ -200,6 +201,7 @@ _TOOL_REGISTRY = [
     ("music_control", music_control, False),
     ("set_expression", character_expression, False),
     ("generate_image", image_generation, False),
+    ("set_reminder", reminder, False),
     ("generate_paper", paper_generator, False),
     ("read_document", file_reader, False),
     ("generate_ppt", ppt_generator, False),
@@ -284,6 +286,7 @@ TOOLS = list(filter(None, [
     _safe_schema(music_control, "music_control"),
     _safe_schema(character_expression, "character_expression"),
     _safe_schema(image_generation, "image_generation"),
+    _safe_schema(reminder, "reminder"),
     _safe_schema(paper_generator, "paper_generator"),
     _safe_schema(file_reader, "file_reader"),
     _safe_schema(ppt_generator, "ppt_generator"),

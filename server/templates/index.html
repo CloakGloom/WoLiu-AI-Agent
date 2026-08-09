@@ -380,7 +380,7 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;transition:all var(--t
 .settings-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .settings-card-label{font-size:13px;font-weight:600;color:var(--txt);display:flex;flex-direction:column;gap:2px}
 .settings-card-label .desc{font-size:11px;color:var(--muted);font-weight:400}
-.settings-field{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.settings-field{display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
 .settings-field:last-child{margin-bottom:0}
 .settings-field label{font-size:12px;color:var(--txt);min-width:100px;flex-shrink:0;text-align:right}
 .settings-field input[type="text"],
@@ -389,6 +389,10 @@ body::before{content:'';position:fixed;inset:0;z-index:-1;transition:all var(--t
 .settings-field select{flex:1;padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--input-bg);color:var(--txt);font-size:12px;font-family:inherit;min-width:0}
 .settings-field input:focus,.settings-field select:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 2px rgba(99,102,241,.15)}
 .settings-field input[type="range"]{flex:1;accent-color:var(--accent)}
+.settings-input-row{display:flex;gap:6px;align-items:stretch;flex:1}
+.settings-input-row input{flex:1}
+.settings-field-btn{padding:4px 12px;border-radius:7px;border:1px solid var(--border);background:var(--glass);color:var(--muted);cursor:pointer;font-size:12px;transition:all .15s;white-space:nowrap}
+.settings-field-btn:hover{background:var(--btn-hover);color:#fff;border-color:transparent}
 .settings-range-wrap{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .settings-range-wrap label{font-size:12px;color:var(--txt);min-width:100px;flex-shrink:0;text-align:right}
 .settings-range-wrap input[type="range"]{flex:1;accent-color:var(--accent)}
@@ -1309,7 +1313,7 @@ function renderSettingsTab(tab){
     h+='<div id="settingsMemList" style="min-height:200px;max-height:calc(100vh - 340px);overflow-y:auto"><div style="text-align:center;padding:30px;color:var(--muted)">加载中...</div></div>';
     h+='<div style="border-top:1px solid var(--border);margin-top:10px;padding-top:10px">';
     h+=renderToggle('memory.enabled','启用向量记忆');
-    h+=renderInput('memory.chromadb_path','ChromaDB 路径');
+    h+=renderInput('memory.chromadb_path','ChromaDB 路径','path');
     h+=renderInput('memory.embedding_model','Embedding 模型');
     h+=renderInput('memory.max_entries','记忆条数上限','number');
     h+='</div>';
@@ -1411,7 +1415,7 @@ function renderSettingsTab(tab){
   }else if(tab==='logging'){
     h+='<p style="font-size:11px;color:var(--muted);margin:0 0 14px">配置日志级别和存储。</p>';
     h+=renderSelect('logging.level','日志级别',{DEBUG:'DEBUG',INFO:'INFO',WARNING:'WARNING',ERROR:'ERROR'});
-    h+=renderInput('logging.directory','日志目录');
+    h+=renderInput('logging.directory','日志目录','path');
     h+=renderInput('logging.max_files','最大保留文件数','number');
   }else if(tab==='about'){
     h+='<p style="font-size:11px;color:var(--muted);margin:0 0 14px">信息与操作。</p>';
@@ -1453,7 +1457,14 @@ function renderApiBlock(title,path,providers,hasModel,tag){
 function renderInput(path,label,type){
   var val=getVal(path);type=type||'text';
   var isPass=type==='password',dispVal=isPass&&val?'••••••••':(val!=null?val:'');
-  return '<div class="settings-field"><label>'+label+'</label><input type="'+(isPass?'password':'text')+'" data-path="'+path+'" data-type="'+(type==='number'?'number':'text')+'" value="'+(dispVal+'').replace(/"/g,'&quot;')+'"'+(type==='number'?' step="1"':'')+'></div>';
+  var isPath=type==='path';
+  var typeAttr=isPass?'password':isPath?'text':'text';
+  var numAttr=type==='number'?' step="1"':'';
+  var html='<div class="settings-field"><label>'+label+'</label><div class="settings-input-row">';
+  html+='<input type="'+typeAttr+'" data-path="'+path+'" data-type="'+(type==='number'?'number':'text')+'" value="'+(dispVal+'').replace(/"/g,'&quot;')+'"'+numAttr+'>';
+  if(isPath)html+='<button class="settings-field-btn" onclick="openFolderLocation(\''+path+'\')" title="打开文件夹位置"><i class="fas fa-folder-open"></i></button>';
+  html+='</div></div>';
+  return html;
 }
 
 function renderModelInput(path,label){
@@ -1873,6 +1884,18 @@ async function settingsToolToggle(tn,btn){
 }
 
 /* ===== 设置页-文件转换 ===== */
+function openFolderLocation(path){
+  var val=getVal(path);
+  if(!val){alert('路径为空');return}
+  // 相对路径 → 用项目根目录拼接
+  var rootEl=document.getElementById('settingsTabTitle');
+  var root='/';
+  try{
+    // 发送到后端打开
+    fetch('/api/open-folder',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path:val})}).catch(function(){});
+  }catch(e){}
+}
 function initSettingsConvDropZone(){
   var dz=document.getElementById('settingsDropZone');if(!dz)return;
   dz.addEventListener('dragover',function(e){e.preventDefault();e.stopPropagation();dz.style.borderColor='var(--accent)';dz.style.background='rgba(99,102,241,.06)'});
@@ -1941,8 +1964,12 @@ function showReminderToast(msg){
   document.body.appendChild(t);
   t.onclick=function(){t.classList.add('dismiss');setTimeout(function(){t.remove()},300)};
   setTimeout(function(){t.classList.add('dismiss');setTimeout(function(){t.remove()},300)},8000);
-  // 播放提示音（如果有）
-  try{var a=new Audio('/static/notification.mp3');a.volume=.5;a.play().catch(function(){})}catch(e){}
+  // 播放合成语音
+  if(msg.audio){
+    var a=new Audio(msg.audio);
+    a.volume=.7;a.play().catch(function(){});
+  }
+  try{var snd=new Audio('/static/notification.mp3');snd.volume=.3;snd.play().catch(function(){})}catch(e){}
 }
 function renderReminderBar(reminders){
   var bar=document.getElementById('reminderBar');
