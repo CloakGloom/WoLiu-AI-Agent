@@ -40,7 +40,12 @@ SCHEMA = {
     "tag": "文档",
     "function": {
         "name": "generate_paper",
-        "description": "生成学术论文 PDF。title 为标题，content 为正文（Markdown/LaTeX）。简历请用 mock_interview。",
+        "description": (
+            "【专用于学术论文 / 论文 / Paper / PDF 格式文档】"
+            "生成学术论文 PDF（支持 Markdown 或 LaTeX）。title 为标题，content 为正文。"
+            "简历制作请用 mock_interview 工具。"
+            "严禁用于 PPT、演示文稿、幻灯片——PPT 请用 generate_presenton_ppt 工具。"
+        ),
         "parameters": {
             "type": "object",
             "properties": {

@@ -1,6 +1,6 @@
 """
 JadeAI 反向代理模块
-将 FastAPI 的 /jade/* 路径请求透明转发到 JadeAI Next.js 服务（localhost:3000）。
+将 FastAPI 的 /jade/* 路径请求透明转发到 JadeAI Next.js 服务（localhost:3002）。
 
 特性：
 - 全 HTTP 方法支持（GET/POST/PUT/DELETE/PATCH/OPTIONS/HEAD）
@@ -11,7 +11,7 @@ JadeAI 反向代理模块
 - JadeAI 未就绪时返回 503，超时返回 504
 
 内部端口约定：
-- JadeAI（Next.js dev / production）监听 localhost:3000
+- JadeAI（Next.js dev / production）监听 localhost:3002
 - FastAPI（我流 Agent）监听 0.0.0.0:8765，对外暴露 /jade/
 - 使用 Next.js basePath="/jade"，路径无需重写
 """
@@ -27,9 +27,9 @@ def _build_target(path: str, query_string: str) -> str:
     """构造 JadeAI 目标 URL。
 
     示例：
-      path="", query=""  → http://localhost:3000/jade/
-      path="dashboard", query=""  → http://localhost:3000/jade/dashboard
-      path="api/resume", query="id=1" → http://localhost:3000/jade/api/resume?id=1
+      path="", query=""  → http://localhost:3002/jade/
+      path="dashboard", query=""  → http://localhost:3002/jade/dashboard
+      path="api/resume", query="id=1" → http://localhost:3002/jade/api/resume?id=1
     """
     base = f"{JADEAI_BASE}/jade"
     target = f"{base}/{path}" if path else f"{base}/"
@@ -47,4 +47,4 @@ async def proxy_to_jade(request: Request, path: str):
     """
     query_string = request.url.query if request.url.query else ""
     target = _build_target(path, query_string)
-    return await proxy_request(request, target, "localhost:3000", "jade-proxy", "JadeAI")
+    return await proxy_request(request, target, "localhost:3002", "jade-proxy", "JadeAI")

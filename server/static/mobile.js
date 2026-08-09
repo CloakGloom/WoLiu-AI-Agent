@@ -231,7 +231,7 @@ function loadMobileHistory(msgs) {
     if (!msgs || msgs.length === 0) {
         container.innerHTML = `
             <div class="welcome">
-                <div class="welcome-icon">🤖</div>
+                <div class="welcome-icon"><i class="fas fa-robot"></i></div>
                 <h3>欢迎使用 AI Agent</h3>
                 <p>输入消息开始对话</p>
             </div>`;
@@ -261,7 +261,7 @@ function renderMobileHistorySteps(steps) {
     group.className = 'process-group';
     const toggle = document.createElement('button');
     toggle.className = 'process-toggle';
-    toggle.innerHTML = `<span class="toggle-icon">▶</span><span>思考过程</span><span class="process-summary">${formatMobileSummary(steps)}</span>`;
+    toggle.innerHTML = `<span class="toggle-icon"><i class="fas fa-caret-right"></i></span><span>思考过程</span><span class="process-summary">${formatMobileSummary(steps)}</span>`;
     toggle.addEventListener('click', () => group.classList.toggle('expanded'));
     const stepsDiv = document.createElement('div');
     stepsDiv.className = 'process-steps';
@@ -284,9 +284,9 @@ function buildMobileStepElement(step) {
     const el = document.createElement('div');
     let icon = '', label = '', cssClass = '';
     switch (step.type) {
-        case 'thinking': icon = '◈'; label = '思考中...'; cssClass = 'thinking'; break;
+        case 'thinking': icon = '<i class="fas fa-spinner fa-pulse"></i>'; label = '思考中...'; cssClass = 'thinking'; break;
         case 'tool_call':
-            icon = '⚙';
+            icon = '<i class="fas fa-gear"></i>';
             label = `调用: <code>${escapeHtml(step.name)}</code>`;
             cssClass = 'tool-call';
             if (step.arguments && Object.keys(step.arguments).length > 0) {
@@ -317,7 +317,7 @@ function addMobileMessage(role, content, messageId, branches) {
     if (role === 'system') {
         row.innerHTML = `<div class="msg-bubble">${formatMobileContent(content)}</div>`;
     } else {
-        const avatarEmoji = role === 'user' ? '👤' : '🤖';
+        const avatarEmoji = role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
         const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
         let menuHtml = '';
@@ -344,9 +344,9 @@ function addMobileMessage(role, content, messageId, branches) {
                 row.dataset.branches = JSON.stringify(branchList);
                 branchHtml = `
                     <div class="branch-nav" style="display:flex;align-items:center;gap:4px;font-size:10px;margin-top:2px">
-                        <button onclick="mobileSwitchBranch(event, ${msgId}, -1)" style="background:none;border:1px solid #d0d0d0;border-radius:4px;padding:1px 6px;font-size:10px;cursor:pointer">◀</button>
+                        <button onclick="mobileSwitchBranch(event, ${msgId}, -1)" style="background:none;border:1px solid #d0d0d0;border-radius:4px;padding:1px 6px;font-size:10px;cursor:pointer"><i class="fas fa-chevron-left"></i></button>
                         <span class="branch-label">分支 1/${branchList.length + 1}</span>
-                        <button onclick="mobileSwitchBranch(event, ${msgId}, 1)" style="background:none;border:1px solid #d0d0d0;border-radius:4px;padding:1px 6px;font-size:10px;cursor:pointer">▶</button>
+                        <button onclick="mobileSwitchBranch(event, ${msgId}, 1)" style="background:none;border:1px solid #d0d0d0;border-radius:4px;padding:1px 6px;font-size:10px;cursor:pointer"><i class="fas fa-chevron-right"></i></button>
                     </div>`;
             }
         }
@@ -374,7 +374,7 @@ function handleMobileStreamStart() {
     const row = document.createElement('div');
     row.className = 'msg-row agent';
     row.innerHTML = `
-        <div class="msg-avatar">🤖</div>
+        <div class="msg-avatar"><i class="fas fa-robot"></i></div>
         <div class="msg-content">
             <div class="msg-bubble streaming-bubble"><span class="stream-text"></span><span class="stream-cursor"></span></div>
         </div>`;
@@ -549,16 +549,16 @@ function renderMobilePaper(pdfUrl) {
     return `
         <div class="paper-embed">
             <div class="paper-header">
-                <span>📄 论文文档</span>
+                <span><i class="fas fa-file-pdf"></i> 论文文档</span>
                 <div>
-                    <button onclick="openPapersFolder()" style="font-size:11px;color:#4a90d9;background:none;border:none;cursor:pointer;margin-right:8px">📁 文件夹</button>
-                    <button onclick="editPaperContent('${name}')" style="font-size:11px;color:#4a90d9;background:none;border:none;cursor:pointer;margin-right:8px">✏️ 修改</button>
+                    <button onclick="openPapersFolder()" style="font-size:11px;color:#4a90d9;background:none;border:none;cursor:pointer;margin-right:8px"><i class="fas fa-folder-open"></i> 文件夹</button>
+                    <button onclick="editPaperContent('${name}')" style="font-size:11px;color:#4a90d9;background:none;border:none;cursor:pointer;margin-right:8px"><i class="fas fa-pen-to-square"></i> 修改</button>
                     <a href="${pdfUrl}" target="_blank" style="font-size:11px;color:#4a90d9;margin-right:8px">查看</a>
                     <a href="${pdfUrl}" download style="font-size:11px;color:#4a90d9">下载</a>
                 </div>
             </div>
             <div id="${id}" style="padding:20px;text-align:center;background:#fafafa;cursor:pointer" onclick="loadMobilePaperPreview('${id}', '${pdfUrl}')">
-                <div style="font-size:32px;margin-bottom:8px">📄</div>
+                <div style="font-size:32px;margin-bottom:8px"><i class="fas fa-file-pdf"></i></div>
                 <div style="font-size:13px;color:#4a90d9">点击预览论文</div>
             </div>
         </div>`;
@@ -607,7 +607,7 @@ function createMobileProcessGroup() {
     group.className = 'process-group';
     const toggle = document.createElement('button');
     toggle.className = 'process-toggle';
-    toggle.innerHTML = `<span class="toggle-icon">▶</span><span>思考过程</span><span class="process-summary">正在思考...</span>`;
+    toggle.innerHTML = `<span class="toggle-icon"><i class="fas fa-caret-right"></i></span><span>思考过程</span><span class="process-summary">正在思考...</span>`;
     toggle.addEventListener('click', () => group.classList.toggle('expanded'));
     const steps = document.createElement('div');
     steps.className = 'process-steps';
@@ -623,9 +623,9 @@ function addMobileProcessStep(group, step) {
     const summary = group.querySelector('.process-summary');
     let icon = '', label = '', cssClass = '';
     switch (step.type) {
-        case 'thinking': icon = '◈'; label = '思考中...'; cssClass = 'thinking'; summary.textContent = '正在思考...'; break;
+        case 'thinking': icon = '<i class="fas fa-spinner fa-pulse"></i>'; label = '思考中...'; cssClass = 'thinking'; summary.textContent = '正在思考...'; break;
         case 'tool_call':
-            icon = '⚙'; label = `调用: <code>${escapeHtml(step.name)}</code>`; cssClass = 'tool-call';
+            icon = '<i class="fas fa-gear"></i>'; label = `调用: <code>${escapeHtml(step.name)}</code>`; cssClass = 'tool-call';
             summary.textContent = `调用: ${step.name}`;
             if (step.arguments && Object.keys(step.arguments).length > 0) {
                 label += `<pre>${escapeHtml(JSON.stringify(step.arguments, null, 2))}</pre>`;
@@ -804,17 +804,17 @@ function renderMobileSessionList(sessions, current) {
         item.className = 'session-item' + (isActive ? ' active' : '') + (isChecked ? ' selected' : '') + (isPinned ? ' pinned' : '');
         item.dataset.sessionId = s.session_id;
         item.innerHTML = `
-            <span class="sess-check">✓</span>
-            <span class="sess-icon">💬</span>
+            <span class="sess-check"><i class="fas fa-check"></i></span>
+            <span class="sess-icon"><i class="fas fa-comment-dots"></i></span>
             <div class="sess-info">
                 <div class="sess-title">${escapeHtml(displayTitle)}</div>
                 <div class="sess-meta">${s.message_count || 0} 条消息</div>
             </div>
-            <button class="sess-more" onclick="toggleMobileSessionMenu(event, '${s.session_id}')">⋮</button>
+            <button class="sess-more" onclick="toggleMobileSessionMenu(event, '${s.session_id}')"><i class="fas fa-ellipsis-vertical"></i></button>
             <div class="sess-menu" id="smenu-${s.session_id}">
-                <button class="sess-menu-item" onclick="mobileSessionRename(event, '${s.session_id}')">✏️ 改名</button>
-                <button class="sess-menu-item" onclick="mobileSessionPin(event, '${s.session_id}', ${isPinned ? 'false' : 'true'})">${isPinned ? '📌 取消置顶' : '📍 置顶'}</button>
-                <button class="sess-menu-item danger" onclick="mobileSessionDelete(event, '${s.session_id}')">🗑 删除</button>
+                <button class="sess-menu-item" onclick="mobileSessionRename(event, '${s.session_id}')"><i class="fas fa-pen-to-square"></i> 改名</button>
+                <button class="sess-menu-item" onclick="mobileSessionPin(event, '${s.session_id}', ${isPinned ? 'false' : 'true'})"><i class="fas fa-thumbtack"></i> ${isPinned ? '取消置顶' : '置顶'}</button>
+                <button class="sess-menu-item danger" onclick="mobileSessionDelete(event, '${s.session_id}')"><i class="fas fa-trash-can"></i> 删除</button>
             </div>`;
         item.addEventListener('click', (e) => {
             if (e.target.closest('.sess-more') || e.target.closest('.sess-menu')) return;
@@ -1003,7 +1003,7 @@ function clearMobileChat() {
     .then(() => {
         document.getElementById('mobileChat').innerHTML = `
             <div class="welcome">
-                <div class="welcome-icon">🤖</div>
+                <div class="welcome-icon"><i class="fas fa-robot"></i></div>
                 <h3>聊天记录已清空</h3>
                 <p>输入消息开始新对话</p>
             </div>`;
@@ -1041,7 +1041,7 @@ function mobileSend() {
     const text = input.value.trim();
     if (!text || !isAgentOnline || isMigrating) return;
     if (!wsSend({ type: 'chat', content: text })) {
-        addMobileMessage('system', '⚠️ 连接已断开，正在重连，请稍后重试');
+        addMobileMessage('system', '<i class="fas fa-triangle-exclamation"></i> 连接已断开，正在重连，请稍后重试');
         return;
     }
     addMobileMessage('user', text);
@@ -1064,7 +1064,7 @@ async function onMobileFileSelected(input) {
                 const sizeStr = data.size < 1024 ? `${data.size}B`
                     : data.size < 1024 * 1024 ? `${(data.size / 1024).toFixed(1)}KB`
                     : `${(data.size / (1024 * 1024)).toFixed(1)}MB`;
-                addMobileMessage('system', `📎 已上传：${data.filename}（${sizeStr}）\n路径：${data.path}`);
+                addMobileMessage('system', `<i class="fas fa-paperclip"></i> 已上传：${data.filename}（${sizeStr}）\n路径：${data.path}`);
             } else {
                 addMobileMessage('system', `上传失败：${data.error}`);
             }
@@ -1178,7 +1178,7 @@ function addMobilePhotoMessage(role, localUrl) {
     const row = document.createElement('div');
     row.className = `msg-row ${role}`;
     row.innerHTML = `
-        <div class="msg-avatar">👤</div>
+        <div class="msg-avatar"><i class="fas fa-user"></i></div>
         <div class="msg-content">
             <div class="msg-bubble">
                 <img src="${localUrl}" class="photo-preview" alt="拍照" style="max-width:100%;border-radius:8px" />
@@ -1214,7 +1214,7 @@ function updateMobileMusicBar(content) {
         mobileMusicBarDuration = dur;
         bar.classList.add('show');
         document.getElementById('mobileMusicTitle').textContent = title || '正在播放...';
-        document.getElementById('mobileMusicBtnPlay').textContent = '⏸';
+        document.getElementById('mobileMusicBtnPlay').innerHTML = '<i class="fas fa-circle-pause"></i>';
         document.getElementById('mobileMusicBtnPlay').title = '暂停';
         updateMobileProgressBar(pos, dur);
         startMobileMusicPolling();
@@ -1224,7 +1224,7 @@ function updateMobileMusicBar(content) {
         mobileMusicBarDuration = dur || mobileMusicBarDuration;
         bar.classList.add('show');
         document.getElementById('mobileMusicTitle').textContent = title || '已暂停';
-        document.getElementById('mobileMusicBtnPlay').textContent = '▶';
+        document.getElementById('mobileMusicBtnPlay').innerHTML = '<i class="fas fa-circle-play"></i>';
         document.getElementById('mobileMusicBtnPlay').title = '播放';
         updateMobileProgressBar(mobileMusicBarPosition, mobileMusicBarDuration);
         stopMobileMusicPolling();
@@ -1492,7 +1492,7 @@ async function regeneratePaper() {
         const data = await resp.json();
         if (data.ok) {
             closePaperEdit();
-            addMobileMessage('system', '✅ 论文已重新生成，刷新预览即可查看最新版本。');
+            addMobileMessage('system', '<i class="fas fa-circle-check"></i> 论文已重新生成，刷新预览即可查看最新版本。');
         } else {
             alert('生成失败：' + (data.error || '请重试'));
         }
@@ -1536,7 +1536,7 @@ function initMobileSpineAnimation() {
     function mobileFallbackAvatar() {
         const spineContainer = document.getElementById('spineContainer');
         if (spineContainer) {
-            spineContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:36px;">🤖</div>';
+            spineContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:36px;"><i class="fas fa-robot"></i></div>';
         }
     }
 

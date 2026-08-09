@@ -22,6 +22,11 @@ function connect() {
         setTimeout(() => {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'comfyui_status' }));
+                ws.send(JSON.stringify({ type: 'tts_status' }));
+                ws.send(JSON.stringify({ type: 'jadeai_status' }));
+                ws.send(JSON.stringify({ type: 'presenton_status' }));
+                ws.send(JSON.stringify({ type: 'ollama_status' }));
+                ws.send(JSON.stringify({ type: 'autolabel_status' }));
             }
         }, 500);
     };
@@ -92,13 +97,38 @@ function handleMessage(msg) {
             break;
         case 'migrate_ack': break;
         case 'music_state': updateMusicBar(msg.result); break;
-        case 'comfyui_status': updateComfyUIButton(msg.running); break;
+        case 'comfyui_status': updateComfyUIButton(msg.running); updateSvcBtn('s_comfyui_btn', msg.running); break;
+        case 'presenton_status': updateSvcBtn('presenton-btn', msg.running); updateSvcBtn('s_presenton_btn', msg.running); _checkPresentonPort(); break;
+        case 'presenton_stop_result': _checkPresentonPort(); break;
+        case 'tts_status': updateSvcBtn('tts-btn', msg.running); updateSvcBtn('s_tts_btn', msg.running); break;
+        case 'jadeai_status': updateSvcBtn('jadeai-btn', msg.running); updateSvcBtn('s_jadeai_btn', msg.running); break;
+        case 'ollama_status': updateSvcBtn('ollama-btn', msg.running); updateSvcBtn('s_ollama_btn', msg.running); break;
+        case 'autolabel_status': updateSvcBtn('autolabel-btn', msg.running); updateSvcBtn('s_autolabel_btn', msg.running); break;
+        case 'personality_state_result':
+            if (typeof renderPersonalityState === 'function') renderPersonalityState(msg);
+            break;
+        case 'reminder_fired':
+            if (typeof showReminderToast === 'function') showReminderToast(msg);
+            break;
+        case 'reminders_list_result':
+            if (typeof renderReminderBar === 'function') renderReminderBar(msg.reminders || []);
+            break;
+        case 'wellness_reminder':
+            if (typeof showWellnessPopup === 'function') showWellnessPopup(msg);
+            break;
+        case 'wellness_ack':
+            if (typeof handleWellnessAck === 'function') handleWellnessAck(msg);
+            break;
+        case 'wellness_config_result':
+            if (typeof renderWellnessConfig === 'function') renderWellnessConfig(msg.config);
+            break;
         case 'comfyui_start_result':
             if (msg.success) pollComfyUIStatus();
-            else { updateComfyUIButton(false); setElText('comfyui-status', msg.message); }
+            else { updateComfyUIButton(false); updateSvcBtn('s_comfyui_btn', false); setElText('comfyui-status', msg.message); }
             break;
         case 'comfyui_restart_result':
             updateComfyUIButton(msg.success);
+            updateSvcBtn('s_comfyui_btn', msg.success);
             if (!msg.success) setElText('comfyui-status', msg.message);
             break;
 
@@ -266,6 +296,16 @@ function renderAgentReply(content) {
     else addMessage('agent', content);
 }
 
+/* Presenton 真实状态检测（通过同源 /api/presenton-status 代理，无跨域问题） */
+function _checkPresentonPort() {
+    var btn = document.getElementById('presenton-btn');
+    if (!btn || !btn._doStart) return;
+    fetch('/api/presenton-status')
+        .then(function (r) { return r.json(); })
+        .then(function (d) { updateSvcBtn('presenton-btn', d.running); })
+        .catch(function () { updateSvcBtn('presenton-btn', false); });
+}
+
 // ===== 工具进度条 =====
 function toolDisplayName(tool) {
     const map = { generate_image:'AI 绘画', generate_paper:'论文 / PDF', generate_ppt:'PPT 生成', generate_kimi_ppt:'PPT 生成', generate_presenton_ppt:'Presenton PPT' };
@@ -334,7 +374,7 @@ function completeMigration() { stopMigrationAnimation(); document.getElementById
 function loadHistory(msgs) {
     const container = document.getElementById('chatMessages');
     container.innerHTML = '';
-    if (!msgs || msgs.length === 0) { container.innerHTML = `<div class="welcome-message"><div class="welcome-icon">🤖</div><h3>欢迎使用 AI Agent</h3><p>Agent 当前在电脑端运行<br>输入消息开始对话</p></div>`; return; }
+    if (!msgs || msgs.length === 0) { container.innerHTML = `<div class="welcome-message"><div class="welcome-icon"><i class="fas fa-robot"></i></div><h3>欢迎使用 AI Agent</h3><p>Agent 当前在电脑端运行<br>输入消息开始对话</p></div>`; return; }
     for (const m of msgs) {
         if (m.role === 'user') addMessage('user', m.content, m.message_id, m.branches);
         else if (m.role === 'assistant' && m.content) {
@@ -399,16 +439,16 @@ function addMessage(role, content, messageId, branches, chunkIndex, chunkTotal) 
     row.dataset.messageId = msgId;
     if (role === 'system') { row.innerHTML = `<div class="msg-content"><div class="msg-bubble">${formatMessageContent(content)}</div></div>`; }
     else {
-        const avatarEmoji = role==='user'?'👤':'🤖', label = role==='user'?'你':'Agent';
+        const avatarEmoji = role==='user'?'<i class="fas fa-user"></i>':'<i class="fas fa-robot"></i>', label = role==='user'?'你':'Agent';
         const time = new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});
         let menuHtml = '';
         if (role === 'user') {
-            menuHtml = `<button class="msg-more" onclick="toggleMsgMenu(event,${msgId})" title="更多">⋮</button><div class="msg-menu" id="msgMenu-${msgId}"><button class="session-menu-item" onclick="msgCopy(event,${msgId})"><span class="menu-icon">📋</span> 复制</button><button class="session-menu-item" onclick="${isTemp?'alert(\'请刷新页面后再编辑\')':'msgEditUser(event,'+msgId+')'}"><span class="menu-icon">✏️</span> 编辑</button><button class="session-menu-item danger" onclick="${isTemp?'alert(\'请刷新页面后再删除\')':'msgDelete(event,'+msgId+')'}"><span class="menu-icon">🗑</span> 删除</button></div>`;
+            menuHtml = `<button class="msg-more" onclick="toggleMsgMenu(event,${msgId})" title="更多"><i class="fas fa-ellipsis-vertical"></i></button><div class="msg-menu" id="msgMenu-${msgId}"><button class="session-menu-item" onclick="msgCopy(event,${msgId})"><span class="menu-icon"><i class="fas fa-clipboard"></i></span> 复制</button><button class="session-menu-item" onclick="${isTemp?'alert(\'请刷新页面后再编辑\')':'msgEditUser(event,'+msgId+')'}"><span class="menu-icon"><i class="fas fa-pen-to-square"></i></span> 编辑</button><button class="session-menu-item danger" onclick="${isTemp?'alert(\'请刷新页面后再删除\')':'msgDelete(event,'+msgId+')'}"><span class="menu-icon"><i class="fas fa-trash-can"></i></span> 删除</button></div>`;
         } else {
-            menuHtml = `<button class="msg-more" onclick="toggleMsgMenu(event,${msgId})" title="更多">⋮</button><div class="msg-menu" id="msgMenu-${msgId}"><button class="session-menu-item" onclick="msgCopy(event,${msgId})"><span class="menu-icon">📋</span> 复制</button><button class="session-menu-item danger" onclick="${isTemp?'alert(\'请刷新页面后再删除\')':'msgDelete(event,'+msgId+')'}"><span class="menu-icon">🗑</span> 删除</button></div>`;
+            menuHtml = `<button class="msg-more" onclick="toggleMsgMenu(event,${msgId})" title="更多"><i class="fas fa-ellipsis-vertical"></i></button><div class="msg-menu" id="msgMenu-${msgId}"><button class="session-menu-item" onclick="msgCopy(event,${msgId})"><span class="menu-icon"><i class="fas fa-clipboard"></i></span> 复制</button><button class="session-menu-item danger" onclick="${isTemp?'alert(\'请刷新页面后再删除\')':'msgDelete(event,'+msgId+')'}"><span class="menu-icon"><i class="fas fa-trash-can"></i></span> 删除</button></div>`;
         }
         let branchHtml = '';
-        if (role==='user' && branches) { let bl=[]; try{bl=typeof branches==='string'?JSON.parse(branches):branches;}catch(e){} if(bl.length>0){row.dataset.branches=JSON.stringify(bl); branchHtml=`<div class="branch-nav"><button class="branch-arrow" onclick="switchBranch(event,${msgId},-1)">◀</button><span class="branch-label">分支 1/${bl.length+1}</span><button class="branch-arrow" onclick="switchBranch(event,${msgId},1)">▶</button></div>`;} }
+        if (role==='user' && branches) { let bl=[]; try{bl=typeof branches==='string'?JSON.parse(branches):branches;}catch(e){} if(bl.length>0){row.dataset.branches=JSON.stringify(bl); branchHtml=`<div class="branch-nav"><button class="branch-arrow" onclick="switchBranch(event,${msgId},-1)"><i class="fas fa-chevron-left"></i></button><span class="branch-label">分支 1/${bl.length+1}</span><button class="branch-arrow" onclick="switchBranch(event,${msgId},1)"><i class="fas fa-chevron-right"></i></button></div>`;} }
         row.innerHTML = `<div class="msg-avatar">${avatarEmoji}</div><div class="msg-content"><div class="msg-label">${label}</div><div class="msg-bubble">${formatMessageContent(content)}</div><div class="msg-time">${time}</div>${branchHtml}</div>${menuHtml}`;
     }
     if (isContinuation) row.innerHTML = `<div class="msg-content chunk-bubble"><div class="msg-bubble">${formatMessageContent(content)}</div></div>`;
@@ -457,11 +497,11 @@ function renderMarkdown(text) {
 }
 
 function renderPaperEmbed(pdfUrl) {
-    const id = 'paper-' + Math.random().toString(36).substr(2,8), filename = pdfUrl.split('/').pop(), name = filename.replace(/\.(pdf|pptx)$/i,''), isPptx=/\.pptx$/i.test(filename), icon=isPptx?'📊':'📄', label=isPptx?'PPT 演示文稿':'论文文档', downloadLabel=isPptx?'⬇ 下载PPT':'⬇ 下载PDF', previewHint=isPptx?'点击后将自动转换为PDF并加载预览':'点击后将在下方加载PDF预览';
-    return `<div class="paper-embed" style="margin:12px -8px;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;background:#fff;min-width:560px"><div class="paper-header" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f5f5f5;border-bottom:1px solid #e0e0e0;flex-wrap:wrap;gap:4px"><span style="font-size:14px;font-weight:600">${icon} ${label}</span><div style="display:flex;flex-wrap:wrap;gap:4px"><button onclick="openPapersFolder()" style="font-size:13px;color:#4a90d9;background:none;border:none;cursor:pointer;text-decoration:none;white-space:nowrap">📁 打开文件夹</button>${isPptx?'':`<button onclick="editPaperContent('${name}')" style="font-size:13px;color:#4a90d9;background:none;border:none;cursor:pointer;text-decoration:none;white-space:nowrap">✏️ 修改文档</button>`}<a href="${pdfUrl}" target="_blank" style="font-size:13px;color:#4a90d9;text-decoration:none;white-space:nowrap">🔍 新窗口查看</a><a href="${pdfUrl}" download style="font-size:13px;color:#4a90d9;text-decoration:none;white-space:nowrap">${downloadLabel}</a></div></div><div id="${id}" style="padding:40px;text-align:center;background:#fafafa;cursor:pointer" onclick="loadPaperPreview('${id}','${pdfUrl}')"><div style="font-size:48px;margin-bottom:12px">${icon}</div><div style="font-size:15px;color:#4a90d9;font-weight:500">点击预览${isPptx?'PPT':'论文'}</div><div style="font-size:12px;color:#999;margin-top:4px">${previewHint}</div></div></div>`;
+    const id = 'paper-' + Math.random().toString(36).substr(2,8), filename = pdfUrl.split('/').pop(), name = filename.replace(/\.(pdf|pptx)$/i,''), isPptx=/\.pptx$/i.test(filename), icon=isPptx?'<i class="fas fa-file-powerpoint"></i>':'<i class="fas fa-file-pdf"></i>', label=isPptx?'PPT 演示文稿':'论文文档', downloadLabel=isPptx?'<i class="fas fa-download"></i> 下载PPT':'<i class="fas fa-download"></i> 下载PDF', previewHint=isPptx?'点击后将自动转换为PDF并加载预览':'点击后将在下方加载PDF预览';
+    return `<div class="paper-embed" style="margin:12px -8px;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;background:#fff;min-width:560px"><div class="paper-header" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f5f5f5;border-bottom:1px solid #e0e0e0;flex-wrap:wrap;gap:4px"><span style="font-size:14px;font-weight:600">${icon} ${label}</span><div style="display:flex;flex-wrap:wrap;gap:4px"><button onclick="openPapersFolder()" style="font-size:13px;color:#4a90d9;background:none;border:none;cursor:pointer;text-decoration:none;white-space:nowrap"><i class="fas fa-folder-open"></i> 打开文件夹</button>${isPptx?'':`<button onclick="editPaperContent('${name}')" style="font-size:13px;color:#4a90d9;background:none;border:none;cursor:pointer;text-decoration:none;white-space:nowrap"><i class="fas fa-pen-to-square"></i> 修改文档</button>`}<a href="${pdfUrl}" target="_blank" style="font-size:13px;color:#4a90d9;text-decoration:none;white-space:nowrap"><i class="fas fa-magnifying-glass"></i> 新窗口查看</a><a href="${pdfUrl}" download style="font-size:13px;color:#4a90d9;text-decoration:none;white-space:nowrap">${downloadLabel}</a></div></div><div id="${id}" style="padding:40px;text-align:center;background:#fafafa;cursor:pointer" onclick="loadPaperPreview('${id}','${pdfUrl}')"><div style="font-size:48px;margin-bottom:12px">${icon}</div><div style="font-size:15px;color:#4a90d9;font-weight:500">点击预览${isPptx?'PPT':'论文'}</div><div style="font-size:12px;color:#999;margin-top:4px">${previewHint}</div></div></div>`;
 }
 
-function loadPaperPreview(containerId, pdfUrl) { const c=document.getElementById(containerId); if(!c)return; c.style.padding='0';c.style.cursor='default';c.onclick=null; const fn=pdfUrl.split('/').pop(); if(/\.pptx$/i.test(fn)){ const u='/api/pptx-preview/'+encodeURIComponent(fn); c.innerHTML=`<div style="padding:40px;text-align:center;background:#fafafa;color:#999">⏳ 正在转换 PPT 为 PDF，请稍候...</div>`; const ifr=document.createElement('iframe');ifr.src=u;ifr.style.cssText='width:100%;height:600px;border:none;display:none';ifr.onload=()=>{c.innerHTML='';ifr.style.display='block';c.appendChild(ifr);};c.appendChild(ifr);return; } c.innerHTML=`<iframe src="${pdfUrl}" style="width:100%;height:600px;border:none;display:block" frameborder="0"></iframe>`; }
+function loadPaperPreview(containerId, pdfUrl) { const c=document.getElementById(containerId); if(!c)return; c.style.padding='0';c.style.cursor='default';c.onclick=null; const fn=pdfUrl.split('/').pop(); if(/\.pptx$/i.test(fn)){ const u='/api/pptx-preview/'+encodeURIComponent(fn); c.innerHTML=`<div style="padding:40px;text-align:center;background:#fafafa;color:#999"><i class="fas fa-hourglass-half"></i> 正在转换 PPT 为 PDF，请稍候...</div>`; const ifr=document.createElement('iframe');ifr.src=u;ifr.style.cssText='width:100%;height:600px;border:none;display:none';ifr.onload=()=>{c.innerHTML='';ifr.style.display='block';c.appendChild(ifr);};c.appendChild(ifr);return; } c.innerHTML=`<iframe src="${pdfUrl}" style="width:100%;height:600px;border:none;display:block" frameborder="0"></iframe>`; }
 function openPapersFolder() { fetch('/api/open-papers-folder',{method:'POST'}).catch(()=>{}); }
 
 // ===== 论文编辑 =====
@@ -477,7 +517,7 @@ async function regeneratePaper(){
     var t=document.getElementById('paperEditTitle').value.trim(),c=document.getElementById('paperEditContent').value.trim(); if(!t){alert('请输入标题');return;}
     var btn=document.getElementById('paperRegenerateBtn');btn.disabled=true;btn.textContent='正在生成...';
     try{var r=await fetch('/api/regenerate-paper',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:paperEditInfo.name,title:t,content:c,format:paperEditInfo.format})}),d=await r.json();
-        if(d.ok){closePaperEdit();localStorage.removeItem('paper_draft_'+paperEditInfo.name);document.querySelectorAll('.paper-embed iframe').forEach(ifr=>{if(ifr.src.includes(paperEditInfo.name))ifr.src=ifr.src;});addMessage('system','✅ 论文已重新生成，刷新预览即可查看最新版本。');}
+        if(d.ok){closePaperEdit();localStorage.removeItem('paper_draft_'+paperEditInfo.name);document.querySelectorAll('.paper-embed iframe').forEach(ifr=>{if(ifr.src.includes(paperEditInfo.name))ifr.src=ifr.src;});addMessage('system','<i class="fas fa-circle-check"></i> 论文已重新生成，刷新预览即可查看最新版本。');}
         else alert('生成失败：'+(d.error||'请重试'));
     }catch(e){alert('生成失败：'+e.message);} finally{btn.disabled=false;btn.textContent='重新生成';}
 }
@@ -489,7 +529,7 @@ function addImageMessage(imgUrl, caption) {
     if (welcome) welcome.remove();
     const row = document.createElement('div'); row.className = 'msg-row agent';
     const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-    row.innerHTML = `<div class="msg-avatar">🤖</div><div class="msg-content"><div class="msg-label">Agent</div><div class="msg-bubble"><img src="${imgUrl}" alt="AI生成的图片" style="max-width:100%;border-radius:8px;cursor:pointer" onclick="window.open(this.src)" loading="lazy" />${caption?`<div style="margin-top:6px;font-size:13px;color:#666">${escapeHtml(caption)}</div>`:''}</div><div class="msg-time">${time}</div></div>`;
+    row.innerHTML = `<div class="msg-avatar"><i class="fas fa-robot"></i></div><div class="msg-content"><div class="msg-label">Agent</div><div class="msg-bubble"><img src="${imgUrl}" alt="AI生成的图片" style="max-width:100%;border-radius:8px;cursor:pointer" onclick="window.open(this.src)" loading="lazy" />${caption?`<div style="margin-top:6px;font-size:13px;color:#666">${escapeHtml(caption)}</div>`:''}</div><div class="msg-time">${time}</div></div>`;
     container.appendChild(row);
     scrollToBottom();
 }
@@ -505,8 +545,8 @@ async function onFileSelected(input) {
             const resp = await fetch('/api/upload', { method: 'POST', body: formData }), data = await resp.json();
             if (data.ok) {
                 const sizeStr = data.size<1024?`${data.size}B`:data.size<1048576?`${(data.size/1024).toFixed(1)}KB`:`${(data.size/1048576).toFixed(1)}MB`;
-                addMessage('system', `📎 已上传：${data.filename}（${sizeStr}）\n绝对路径：I:/Agent/data/${data.path}`);
-                wsSend({ type: 'chat', content: `📎 文件已上传：${data.filename}\n绝对路径：I:/Agent/data/${data.path}` });
+                addMessage('system', `<i class="fas fa-paperclip"></i> 已上传：${data.filename}（${sizeStr}）\n绝对路径：I:/Agent/data/${data.path}`);
+                wsSend({ type: 'chat', content: `<i class="fas fa-paperclip"></i> 文件已上传：${data.filename}\n绝对路径：I:/Agent/data/${data.path}` });
             } else addMessage('system', `上传失败：${data.error}`);
         } catch (e) { addMessage('system', `上传失败：${e.message}`); }
     }
@@ -517,7 +557,7 @@ async function onFileSelected(input) {
 function sendMessage() {
     const input = document.getElementById('inputBox'); const text = input.value.trim();
     if (!text || !isAgentOnline || isMigrating) return;
-    if (!wsSend({ type: 'chat', content: text })) { addMessage('system', '⚠️ 连接已断开，正在重连，请稍后重试'); return; }
+    if (!wsSend({ type: 'chat', content: text })) { addMessage('system', '<i class="fas fa-triangle-exclamation"></i> 连接已断开，正在重连，请稍后重试'); return; }
     addMessage('user', text); input.value = ''; input.style.height = 'auto'; input.focus();
 }
 

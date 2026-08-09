@@ -69,7 +69,7 @@ services:
     enabled: false
     install_dir: "side-projects/JadeAI-0.4.1"
     host: "127.0.0.1"
-    port: 3000
+    port: 3002
     api_path: "/jade/api"
     editor_path: "/resume-editor"
 
@@ -80,6 +80,13 @@ services:
   autolabel:
     enabled: false
     project_dir: "side-projects/autolabel-dock-main"
+
+  presenton:
+    enabled: true
+    project_dir: "side-projects/presenton-electron-v0.9.3-beta"
+    host: "127.0.0.1"
+    port: 18001                    # FastAPI 后端
+    frontend_port: 3000            # Next.js 前端（模板选择/编辑器）
 
 # ── 第三方工具路径 ──
 external:
@@ -121,6 +128,7 @@ autostart:
   jadeai: false
   ollama: false
   autolabel: false
+  presenton: false
 
 # ── 文件处理 ──
 upload:

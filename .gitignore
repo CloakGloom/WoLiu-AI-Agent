@@ -30,6 +30,7 @@ Thumbs.db
 !.env.example
 *.pem
 *.key
+config/secrets.json
 
 # AI Models (too large)
 *.gguf
@@ -84,11 +85,24 @@ autolabel_crash.log
 
 # Third-party / embedded projects (not part of core code)
 side-projects/
+!side-projects/personality/
 .launcher/
 tools/PPTAgent/
 tools/agent-browser-*/
 
 # Runtime data & private content (generated at runtime, contains personal data)
 data/
+!.wellness_config.json
 .workbuddy/
 AI_Agent.exe
+
+# Temp/debug scripts
+_*.ps1
+_*.py
+test_ppt.py
+test_presenton_debug.py
+server/static/papers/
+server/static/generated/
+
+# settings.json (generated at first run)
+config/settings.json

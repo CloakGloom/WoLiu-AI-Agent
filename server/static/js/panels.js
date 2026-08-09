@@ -35,7 +35,7 @@ function initSpineAnimation() {
     }
     function fallbackAvatar() {
         const sc = document.getElementById('spineContainer');
-        if (sc) sc.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:48px;">🤖</div>';
+        if (sc) sc.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:48px;"><i class="fas fa-robot"></i></div>';
     }
     if (typeof spine !== 'undefined' && spine.SpinePlayer) doInit();
     else { const s=document.createElement('script'); s.src='/static/spine-player.js'; s.onload=doInit; s.onerror=fallbackAvatar; document.head.appendChild(s); }
@@ -85,12 +85,12 @@ function closeMusicBar(){const bar=document.getElementById('musicBar');if(bar){b
 
 // ===== 自启动管理 =====
 function toggleAutostart(service){fetch('/api/autostart/'+service,{method:'POST'}).then(r=>r.json()).then(d=>updateAutostartBtn(service,d.enabled)).catch(()=>{});}
-function updateAutostartBtn(service,enabled){var b=document.getElementById('as-'+service);if(!b)return;b.className='autostart-btn'+(enabled?' on':'');b.textContent=enabled?'已自启':'自启动';}
+function updateAutostartBtn(service,enabled){var a=document.getElementById('as-'+service),b=document.getElementById('s_as_'+service);if(a){a.className='svc-btn svc-btn--auto'+(enabled?' is-on':'');a.textContent=enabled?'已自启':'自启动';}if(b){b.className='svc-btn svc-btn--auto'+(enabled?' is-on':'');b.textContent=enabled?'已自启':'自启动';}}
 function loadAutostartConfig(){fetch('/api/autostart').then(r=>r.json()).then(cfg=>{for(var k in cfg)updateAutostartBtn(k,cfg[k]);}).catch(()=>{});}
 setTimeout(loadAutostartConfig,1500);
 
 // ===== GPU 释放 / 退出 =====
-function releaseGPU(){var b=document.getElementById('gpu-release-btn');if(!b)return;b.disabled=true;b.textContent='释放中...';if(ws&&ws.readyState===WebSocket.OPEN){ws.send(JSON.stringify({type:'gpu_release'}));updateComfyUIButton(false);setTimeout(()=>{b.disabled=false;b.textContent='释放 GPU 显存';},3000);}}
+function releaseGPU(){var a=document.getElementById('gpu-release-btn'),b=document.getElementById('s_gpu_release_btn');upd=function(btn){if(!btn)return;btn.disabled=true;btn.textContent='释放中...';};upd(a);upd(b);if(ws&&ws.readyState===WebSocket.OPEN){ws.send(JSON.stringify({type:'gpu_release'}));updateComfyUIButton(false);updateSvcBtn('s_comfyui_btn',false);setTimeout(function(){res=function(btn){if(!btn)return;btn.disabled=false;btn.textContent='释放 GPU 显存';};res(a);res(b);},3000);}}
 function quitApp(){if(!confirm('确定退出程序？\n\n点击"确定"后会询问是否保留后台服务。'))return;var k=[];if(confirm('保留 ComfyUI（AI绘画/视频）后台运行？\n点"确定"保留，点"取消"关闭'))k.push('comfyui');if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'shutdown',keep_services:k}));setTimeout(()=>window.close(),500);}
 
 // ===== ComfyUI =====
@@ -98,16 +98,31 @@ let comfyuiPollTimer=null,comfyuiStarting=false;
 
 function updateComfyUIButton(running){
     const btn=document.getElementById('comfyui-btn'),st=document.getElementById('comfyui-status');if(!btn||!st)return;
-    if(running){btn.className='comfyui-btn on';btn.textContent='已就绪';btn.title='点击关闭 ComfyUI';btn.onclick=stopComfyUI;btn.onmouseenter=function(){this.textContent='关闭';};btn.onmouseleave=function(){this.textContent='已就绪';};st.textContent='绘画功能可用';clearInterval(comfyuiPollTimer);comfyuiPollTimer=null;comfyuiStarting=false;}
-    else{if(comfyuiStarting)return;btn.className='comfyui-btn off';btn.textContent='已关闭';btn.title='点击开启 ComfyUI';btn.onclick=toggleComfyUI;btn.onmouseenter=function(){this.textContent='开启';};btn.onmouseleave=function(){this.textContent='已关闭';};st.textContent='点击按钮开启';}
+    if(running){btn.className='svc-btn svc-btn--toggle is-on';btn.textContent='已就绪';btn.title='点击关闭 ComfyUI';btn.onclick=stopComfyUI;btn.onmouseenter=function(){this.textContent='关闭';};btn.onmouseleave=function(){this.textContent='已就绪';};st.textContent='绘画功能可用';clearInterval(comfyuiPollTimer);comfyuiPollTimer=null;comfyuiStarting=false;}
+    else{if(comfyuiStarting)return;btn.className='svc-btn svc-btn--toggle is-off';btn.textContent='已关闭';btn.title='点击开启 ComfyUI';btn.onclick=toggleComfyUI;btn.onmouseenter=function(){this.textContent='开启';};btn.onmouseleave=function(){this.textContent='已关闭';};st.textContent='点击按钮开启';}
 }
-function stopComfyUI(){var b=document.getElementById('comfyui-btn'),s=document.getElementById('comfyui-status');if(!b)return;b.className='comfyui-btn loading';b.textContent='关闭中...';b.onclick=null;b.onmouseenter=null;b.onmouseleave=null;if(s)s.textContent='正在关闭...';if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'comfyui_stop'}));setTimeout(()=>{b.className='comfyui-btn off';b.textContent='已关闭';b.onclick=toggleComfyUI;b.onmouseenter=function(){this.textContent='开启';};b.onmouseleave=function(){this.textContent='已关闭';};if(s)s.textContent='已关闭';},2000);}
-function toggleComfyUI(){const b=document.getElementById('comfyui-btn'),s=document.getElementById('comfyui-status');if(!b||!s)return;comfyuiStarting=true;b.className='comfyui-btn loading';b.textContent='启动中...';b.title='';b.onclick=null;b.onmouseenter=null;b.onmouseleave=null;s.textContent='正在启动 ComfyUI...';if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'comfyui_start'}));}
-function restartComfyUI(){const b=document.getElementById('comfyui-btn'),s=document.getElementById('comfyui-status');if(!b||!s)return;b.className='comfyui-btn loading';b.textContent='重启中...';b.title='';b.onclick=null;b.onmouseenter=null;b.onmouseleave=null;s.textContent='正在重启 ComfyUI...';if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'comfyui_restart'}));}
+function stopComfyUI(){var b=document.getElementById('comfyui-btn'),s=document.getElementById('comfyui-status');if(!b)return;b.className='svc-btn svc-btn--toggle is-loading';b.textContent='关闭中...';b.onclick=null;b.onmouseenter=null;b.onmouseleave=null;if(s)s.textContent='正在关闭...';if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'comfyui_stop'}));setTimeout(()=>{b.className='svc-btn svc-btn--toggle is-off';b.textContent='已关闭';b.onclick=toggleComfyUI;b.onmouseenter=function(){this.textContent='开启';};b.onmouseleave=function(){this.textContent='已关闭';};if(s)s.textContent='已关闭';},2000);}
+function toggleComfyUI(){const b=document.getElementById('comfyui-btn'),s=document.getElementById('comfyui-status');if(!b||!s)return;comfyuiStarting=true;b.className='svc-btn svc-btn--toggle is-loading';b.textContent='启动中...';b.title='';b.onclick=null;b.onmouseenter=null;b.onmouseleave=null;s.textContent='正在启动 ComfyUI...';if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'comfyui_start'}));}
+function restartComfyUI(){const b=document.getElementById('comfyui-btn'),s=document.getElementById('comfyui-status');if(!b||!s)return;b.className='svc-btn svc-btn--toggle is-loading';b.textContent='重启中...';b.title='';b.onclick=null;b.onmouseenter=null;b.onmouseleave=null;s.textContent='正在重启 ComfyUI...';if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'comfyui_restart'}));}
 function pollComfyUIStatus(){clearInterval(comfyuiPollTimer);let attempts=0;comfyuiPollTimer=setInterval(()=>{attempts++;if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify({type:'comfyui_status'}));if(attempts>=60){clearInterval(comfyuiPollTimer);comfyuiPollTimer=null;comfyuiStarting=false;updateComfyUIButton(false);const s=document.getElementById('comfyui-status');if(s)s.textContent='启动超时，请检查 ComfyUI';}},2000);}
 
 // ===== 服务管理面板 =====
-function openServicesPanel(){var m=document.getElementById('servicesModal');if(m)m.style.display='flex';}
+function openServicesPanel(){var m=document.getElementById('servicesModal');if(m)m.style.display='flex';if(typeof ws!=='undefined'&&ws&&ws.readyState===WebSocket.OPEN){ws.send(JSON.stringify({type:'comfyui_status'}));ws.send(JSON.stringify({type:'tts_status'}));ws.send(JSON.stringify({type:'jadeai_status'}));ws.send(JSON.stringify({type:'presenton_status'}));ws.send(JSON.stringify({type:'ollama_status'}));ws.send(JSON.stringify({type:'autolabel_status'}));}}
+
+// 通用服务按钮状态更新（配合 setupStopStart 的 _doStart/_doStop）
+function updateSvcBtn(id,running){
+  var b=document.getElementById(id);if(!b||!b._doStart)return;
+  // 按钮处于过渡中（is-loading）：仅 running=true 时允许更新（服务已启动就绪）；
+  // running=false 时跳过（轮询状态查询，不应覆盖 _doStart/_doStop 设置的"启动中..."/"关闭中..."文本）
+  if(b.className.indexOf('is-loading')!==-1 && !running)return;
+  if(running){
+    b.className='svc-btn svc-btn--toggle is-on';b.textContent='已就绪';b._running=true;b.onclick=b._doStop;
+    b.onmouseenter=function(){this.textContent='关闭';};b.onmouseleave=function(){this.textContent='已就绪';};
+  }else{
+    b.className='svc-btn svc-btn--toggle is-off';b.textContent='已关闭';b._running=false;b.onclick=b._doStart;
+    b.onmouseenter=function(){this.textContent='开启';};b.onmouseleave=function(){this.textContent='已关闭';};
+  }
+}
 function closeServicesPanel(){var m=document.getElementById('servicesModal');if(m)m.style.display='none';}
 (function(){var m=document.getElementById('servicesModal');if(m)m.addEventListener('click',function(e){if(e.target===m)closeServicesPanel();});})();
 

@@ -3,7 +3,9 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>TTS 语音合成</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <style>
+.fas,.far,.fab{font-size:inherit;vertical-align:-.125em}
 :root{--bg:#f5f7fa;--card:#fff;--txt:#1a1a2e;--muted:#888;--accent:#6366f1;--border:#e0e0e0;--danger:#ef4444}
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:var(--bg);color:var(--txt);font-family:-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -39,11 +41,11 @@ audio{width:100%;margin-top:4px}
 </head>
 <body>
 <div class="card">
-  <h1>🎤 Confucius4-TTS</h1>
+  <h1><i class="fas fa-microphone"></i> Confucius4-TTS</h1>
   <div class="sub">零样本语音合成 · 14 种语言 · 声音克隆</div>
 
   <div class="upload-zone" id="dropZone" onclick="document.getElementById('refFile').click()">
-    <div class="upload-icon">📁</div>
+    <div class="upload-icon"><i class="fas fa-folder-open"></i></div>
     <div class="upload-text" id="dropText">点击或拖拽上传参考音频</div>
     <div class="file-name" id="fileName"></div>
     <input type="file" id="refFile" accept="audio/*" onchange="handleFile(this.files[0])">
@@ -69,10 +71,10 @@ audio{width:100%;margin-top:4px}
 
   <div class="progress" id="progress"><div class="progress-bar" id="progressBar"></div></div>
 
-  <button class="btn" id="synthBtn" onclick="synthesize()">🎵 开始合成</button>
+  <button class="btn" id="synthBtn" onclick="synthesize()"><i class="fas fa-music"></i> 开始合成</button>
 
   <div class="result" id="result">
-    <div style="font-size:13px;font-weight:600">✅ 合成完成</div>
+    <div style="font-size:13px;font-weight:600"><i class="fas fa-circle-check"></i> 合成完成</div>
     <div style="font-size:11px;color:var(--muted)" id="resultMeta"></div>
     <audio controls id="player"></audio>
   </div>
@@ -82,8 +84,8 @@ audio{width:100%;margin-top:4px}
 <script>
 var refFile=null;
 fetch('/api/tts/health').then(r=>r.json()).then(d=>{
-  document.getElementById('svcStatus').innerHTML='<span style="color:#10b981">✅ 在线</span> ('+d.sample_rate+'Hz)';
-}).catch(function(){document.getElementById('svcStatus').innerHTML='<span style="color:var(--danger)">❌ 离线</span>'});
+  document.getElementById('svcStatus').innerHTML='<span style="color:#10b981"><i class="fas fa-circle-check"></i> 在线</span> ('+d.sample_rate+'Hz)';
+}).catch(function(){document.getElementById('svcStatus').innerHTML='<span style="color:var(--danger)"><i class="fas fa-circle-xmark"></i> 离线</span>'});
 
 document.addEventListener('DOMContentLoaded',function(){
   var dz=document.getElementById('dropZone');
@@ -94,7 +96,7 @@ document.addEventListener('DOMContentLoaded',function(){
 
 function handleFile(f){
   if(!f)return;refFile=f;
-  document.getElementById('fileName').textContent='📎 '+f.name+' ('+(f.size/1024).toFixed(0)+'KB)';
+  document.getElementById('fileName').innerHTML='<i class="fas fa-paperclip"></i> '+f.name+' ('+(f.size/1024).toFixed(0)+'KB)';
   document.getElementById('dropZone').classList.add('has-file');
   document.getElementById('dropText').textContent='点击更换参考音频';
 }
@@ -120,12 +122,12 @@ function synthesize(){
     document.getElementById('player').src=url;
     document.getElementById('resultMeta').textContent='大小 '+(blob.size/1024).toFixed(0)+'KB';
     document.getElementById('result').className='result success';document.getElementById('result').style.display='';
-    btn.disabled=false;btn.textContent='🎵 开始合成';btn.classList.remove('btn-loading');
+    btn.disabled=false;btn.innerHTML='<i class="fas fa-music"></i> 开始合成';btn.classList.remove('btn-loading');
   }).catch(function(e){
     prog.style.display='none';
     document.getElementById('result').className='result error';document.getElementById('result').style.display='';
-    document.getElementById('result').innerHTML='❌ '+e.message;
-    btn.disabled=false;btn.textContent='🎵 重试';btn.classList.remove('btn-loading');
+    document.getElementById('result').innerHTML='<i class="fas fa-circle-xmark"></i> '+e.message;
+    btn.disabled=false;btn.innerHTML='<i class="fas fa-music"></i> 重试';btn.classList.remove('btn-loading');
   });
 }
 </script>

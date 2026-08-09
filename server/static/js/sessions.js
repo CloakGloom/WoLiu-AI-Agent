@@ -26,19 +26,19 @@ function renderSessionList(sessions, current) {
         item.dataset.sessionId = s.session_id;
         item.innerHTML = `
             <span class="session-check" onclick="toggleSessionCheck(event, '${s.session_id}')"></span>
-            <span class="pin-icon" title="已置顶">📌</span>
-            <div class="session-icon">💬</div>
+            <span class="pin-icon" title="已置顶"><i class="fas fa-thumbtack"></i></span>
+            <div class="session-icon"><i class="fas fa-comment-dots"></i></div>
             <div class="session-info">
                 <div class="session-title">${escapeHtml(displayTitle)}</div>
                 <div class="session-meta">${s.message_count || 0} 条消息</div>
             </div>
-            <button class="session-more" onclick="toggleSessionMenu(event, '${s.session_id}')" title="更多">⋮</button>
+            <button class="session-more" onclick="toggleSessionMenu(event, '${s.session_id}')" title="更多"><i class="fas fa-ellipsis-vertical"></i></button>
             <div class="session-menu" id="menu-${s.session_id}">
-                <button class="session-menu-item" onclick="sessionDetail(event, '${s.session_id}')"><span class="menu-icon">ℹ️</span> 详情</button>
-                <button class="session-menu-item" onclick="sessionRename(event, '${s.session_id}', '${escapeHtml(s.title || s.session_id).replace(/'/g, "\\'")}')"><span class="menu-icon">✏️</span> 改名</button>
-                <button class="session-menu-item" onclick="sessionPin(event, '${s.session_id}', ${isPinned?'false':'true'})"><span class="menu-icon">${isPinned?'📌':'📍'}</span> ${isPinned?'取消置顶':'置顶'}</button>
-                <button class="session-menu-item" onclick="sessionDuplicate(event, '${s.session_id}')"><span class="menu-icon">📋</span> 复制对话</button>
-                <button class="session-menu-item danger" onclick="sessionDelete(event, '${s.session_id}')"><span class="menu-icon">🗑</span> 删除</button>
+                <button class="session-menu-item" onclick="sessionDetail(event, '${s.session_id}')"><span class="menu-icon"><i class="fas fa-circle-info"></i></span> 详情</button>
+                <button class="session-menu-item" onclick="sessionRename(event, '${s.session_id}', '${escapeHtml(s.title || s.session_id).replace(/'/g, "\\'")}')"><span class="menu-icon"><i class="fas fa-pen-to-square"></i></span> 改名</button>
+                <button class="session-menu-item" onclick="sessionPin(event, '${s.session_id}', ${isPinned?'false':'true'})"><span class="menu-icon"><i class="fas fa-thumbtack"></i></span> ${isPinned?'取消置顶':'置顶'}</button>
+                <button class="session-menu-item" onclick="sessionDuplicate(event, '${s.session_id}')"><span class="menu-icon"><i class="fas fa-clipboard"></i></span> 复制对话</button>
+                <button class="session-menu-item danger" onclick="sessionDelete(event, '${s.session_id}')"><span class="menu-icon"><i class="fas fa-trash-can"></i></span> 删除</button>
             </div>`;
         if (!isActive && !selectMode) item.style.cursor = 'pointer';
         item.addEventListener('click', (e) => {
@@ -188,5 +188,5 @@ function batchDelete() {
 // ===== 清空聊天 =====
 function clearChat() {
     if (!confirm('确定要清空当前会话的所有聊天记录吗？')) return;
-    fetch('/api/sessions/current/messages',{method:'DELETE'}).then(r=>r.json()).then(()=>{document.getElementById('chatMessages').innerHTML=`<div class="welcome-message"><div class="welcome-icon">🤖</div><h3>聊天记录已清空</h3><p>输入消息开始新对话</p></div>`;currentProcessGroup=null;}).catch(err=>console.error('清空失败:',err));
+    fetch('/api/sessions/current/messages',{method:'DELETE'}).then(r=>r.json()).then(()=>{document.getElementById('chatMessages').innerHTML=`<div class="welcome-message"><div class="welcome-icon"><i class="fas fa-robot"></i></div><h3>聊天记录已清空</h3><p>输入消息开始新对话</p></div>`;currentProcessGroup=null;}).catch(err=>console.error('清空失败:',err));
 }

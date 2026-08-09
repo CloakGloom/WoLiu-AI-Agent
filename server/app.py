@@ -65,6 +65,7 @@ from agent.tools.builtin import diagnostics as diagnostics_tool
 from agent.tools.custom.paper_generator import regenerate_document
 from agent.tools import _RAW_TOOLS, _TOOL_REGISTRY, toggle_tool, get_disabled_tools
 from server.shared import ensure_session, format_messages_for_ws, format_sessions_list, fallback_session, parse_json_body
+from server.settings_manager import load_all as load_settings, update as update_settings, reset as reset_settings, export_yaml, import_yaml, get_defaults
 
 # ==================== 路径 ====================
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -104,6 +105,22 @@ async def startup_mcp():
         logger.info("MCP 工具管理器已初始化（含远程连接）")
     except Exception as e:
         logger.warning(f"MCP 初始化跳过: {e}")
+
+    # 初始化人格预设系统 + 健康提醒调度器
+    try:
+        from agent.personality import init_personality_system, start_wellness
+        init_personality_system()
+        start_wellness(_broadcast_wellness)
+    except Exception as e:
+        print(f"[人格] 初始化失败: {e}", flush=True)
+
+    # 初始化提醒调度器 + 绑定 WS 推送
+    try:
+        from agent.tools.custom.reminder import start_scheduler, set_push
+        set_push(_broadcast_reminder)
+        start_scheduler()
+    except Exception as e:
+        print(f"[提醒] 初始化失败: {e}", flush=True)
 
 @app.on_event("shutdown")
 async def shutdown_mcp():
@@ -218,6 +235,16 @@ def _broadcast(obj):
     for ws in (state.pc_ws, state.mobile_ws):
         if ws:
             _safe_send(ws, obj)
+
+
+def _broadcast_reminder(data: dict):
+    """广播提醒消息到所有客户端"""
+    _broadcast(data)
+
+
+def _broadcast_wellness(data: dict):
+    """广播健康提醒到所有客户端"""
+    _broadcast(data)
 
 
 def _broadcast_music_state(state_str: str):
@@ -813,7 +840,7 @@ async def get_autostart():
 @app.post("/api/autostart/{service}")
 async def set_autostart(service: str):
     """切换某个服务的自启动状态"""
-    if service not in ("comfyui", "tts", "jadeai", "ollama", "autolabel"):
+    if service not in ("comfyui", "tts", "jadeai", "ollama", "autolabel", "presenton"):
         return JSONResponse(status_code=400, content={"error": "无效的服务"})
     _autostart[service] = not _autostart.get(service, False)
     try:
@@ -822,6 +849,246 @@ async def set_autostart(service: str):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
     return {"service": service, "enabled": _autostart[service]}
+
+
+# ==================== 系统设置 API ====================
+@app.get("/api/settings")
+async def api_get_settings():
+    """获取所有系统设置。"""
+    try:
+        return load_settings()
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"读取设置失败：{str(e)}"})
+
+
+@app.put("/api/settings")
+async def api_update_settings(data: dict):
+    """批量更新系统设置。"""
+    try:
+        updated = update_settings(data)
+        return {"ok": True, "settings": updated}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"更新设置失败：{str(e)}"})
+
+
+@app.post("/api/settings/reset")
+async def api_reset_settings():
+    """恢复默认设置。"""
+    try:
+        defaults = reset_settings()
+        return {"ok": True, "settings": defaults}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"重置设置失败：{str(e)}"})
+
+
+@app.get("/api/settings/export")
+async def api_export_settings():
+    """导出当前设置为 YAML 文件下载。"""
+    try:
+        yaml_str = export_yaml()
+        from fastapi.responses import PlainTextResponse
+        return PlainTextResponse(
+            content=yaml_str,
+            media_type="application/x-yaml",
+            headers={"Content-Disposition": "attachment; filename=settings.yaml"},
+        )
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"导出失败：{str(e)}"})
+
+
+@app.post("/api/settings/import")
+async def api_import_settings(data: dict):
+    """从 YAML 字符串导入设置。"""
+    yaml_str = data.get("yaml", "")
+    if not yaml_str:
+        return JSONResponse(status_code=400, content={"error": "缺少 yaml 字段"})
+    try:
+        imported = import_yaml(yaml_str)
+        return {"ok": True, "settings": imported}
+    except ValueError as e:
+        return JSONResponse(status_code=400, content={"error": str(e)})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": f"导入失败：{str(e)}"})
+
+
+@app.get("/api/settings/defaults")
+async def api_get_defaults():
+    """获取默认设置（只读）。"""
+    return get_defaults()
+
+
+@app.post("/api/proxy/models")
+async def api_proxy_models(data: dict):
+    """代理请求供应商模型列表，规避浏览器 CORS 限制。"""
+    base_url = (data.get("base_url", "") or "").strip().rstrip("/")
+    api_key = (data.get("api_key", "") or "").strip()
+    if not base_url:
+        return JSONResponse(status_code=400, content={"error": "缺少 base_url"})
+    url = f"{base_url}/models"
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.get(url, headers=headers)
+            if resp.status_code == 200:
+                return resp.json()
+            return JSONResponse(status_code=resp.status_code, content={"error": resp.text[:500]})
+    except Exception as e:
+        return JSONResponse(status_code=502, content={"error": f"无法连接: {str(e)}"})
+
+
+@app.get("/api/personality/state")
+async def api_personality_state():
+    """返回当前 15 维人格状态 + 默认基准（HTTP，供设置页查询）"""
+    from agent.personality import get_state
+    from agent.personality.dimensions import DEFAULT_PERSONALITY
+    return {"current": get_state(), "defaults": dict(DEFAULT_PERSONALITY)}
+
+
+@app.get("/api/drawing/models")
+async def api_drawing_models():
+    """返回绘画模型配置"""
+    from agent.tools.custom.drawing_model_config import get_all
+    return get_all()
+
+
+@app.post("/api/drawing/models/save")
+async def api_drawing_models_save(request: Request):
+    """保存绘画模型配置"""
+    data = await request.json()
+    from agent.tools.custom.drawing_model_config import update_model
+    style = data.get("style", "")
+    part = data.get("part", "")
+    field = data.get("field", "")
+    value = data.get("value", "")
+    return update_model(style, part, field, value)
+
+
+@app.post("/api/drawing/models/download")
+async def api_drawing_models_download(request: Request):
+    """下载模型文件到 ComfyUI models 目录（优先魔搭社区，回退直接 URL）"""
+    data = await request.json()
+    rel_path = data.get("rel_path", "").strip()
+    modelscope_id = data.get("modelscope_id", "").strip()
+    url = data.get("url", "").strip()
+    if not rel_path:
+        return {"error": "缺少 rel_path"}
+
+    from agent.utils import get_comfyui_path
+    dest = os.path.join(get_comfyui_path(), "ComfyUI", "models", rel_path)
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+
+    # ── 优先用魔搭社区 SDK ──
+    if modelscope_id:
+        try:
+            import subprocess, sys
+            # 确保 modelscope 已安装
+            subprocess.run([sys.executable, "-m", "pip", "install", "modelscope", "-q"],
+                          capture_output=True, timeout=30)
+            from modelscope.hub.snapshot_download import snapshot_download
+            cache_dir = snapshot_download(modelscope_id, cache_dir=os.path.dirname(dest))
+            # 查找下载的文件并复制到目标路径
+            downloaded = False
+            target_name = os.path.basename(rel_path)
+            for root, dirs, files in os.walk(cache_dir):
+                for f in files:
+                    if f in target_name or target_name in f:
+                        src = os.path.join(root, f)
+                        import shutil
+                        shutil.copy2(src, dest)
+                        size = os.path.getsize(dest)
+                        return {"success": True, "path": dest, "size": size, "source": "modelscope"}
+            # 如果没匹配到，复制整个 cache_dir 所有文件
+            for root, dirs, files in os.walk(cache_dir):
+                for f in files:
+                    if f.endswith(".safetensors") or f.endswith(".json"):
+                        sub_rel = os.path.relpath(os.path.join(root, f), cache_dir)
+                        d = os.path.join(dest, sub_rel) if sub_rel != "." else dest
+                        os.makedirs(os.path.dirname(d), exist_ok=True)
+                        import shutil
+                        shutil.copy2(os.path.join(root, f), d)
+            import shutil
+            # fallback: 直接拷贝整个目录到 models 下
+            model_dir = os.path.join(os.path.dirname(dest), os.path.basename(modelscope_id))
+            if os.path.isdir(cache_dir):
+                shutil.copytree(cache_dir, model_dir, dirs_exist_ok=True)
+                return {"success": True, "path": model_dir, "source": "modelscope"}
+            return {"error": "魔搭下载完成但未找到目标文件"}
+        except Exception as e:
+            # 魔搭下载失败，回退到 URL
+            if not url:
+                return {"error": f"魔搭下载失败: {e}，且未提供 url 回退"}
+            # 继续走 URL 下载
+
+    # ── 回退：直接 URL 下载 ──
+    if not url:
+        return {"error": "请填写魔搭模型 ID 或下载链接"}
+    try:
+        import requests as req
+        r = req.get(url, stream=True, timeout=600)
+        r.raise_for_status()
+        downloaded = 0
+        with open(dest, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+                downloaded += len(chunk)
+            f.flush()
+        return {"success": True, "path": dest, "size": downloaded, "source": "url"}
+    except Exception as e:
+        return {"error": f"URL 下载失败: {e}"}
+
+
+@app.get("/api/services/installed")
+async def api_services_installed():
+    """检测哪些外部服务已实际安装（对应目录/文件存在）。"""
+    results: dict[str, bool] = {}
+
+    # ComfyUI —— 使用 get_comfyui_path 检测
+    try:
+        from agent.utils import get_comfyui_path
+        cp = get_comfyui_path()
+        results["comfyui"] = bool(cp) and os.path.isdir(cp)
+    except Exception:
+        results["comfyui"] = False
+
+    # TTS —— side-projects/Confucius4-TTS/python/python.exe
+    try:
+        tts_python = _pr() / "side-projects" / "Confucius4-TTS" / "python" / "python.exe"
+        results["tts"] = tts_python.is_file()
+    except Exception:
+        results["tts"] = False
+
+    # JadeAI —— side-projects/JadeAI-0.4.1/node_modules
+    try:
+        jade_dir = _pr() / "side-projects" / "JadeAI-0.4.1"
+        results["jadeai"] = jade_dir.is_dir()
+    except Exception:
+        results["jadeai"] = False
+
+    # Presenton —— side-projects/presenton-electron-v0.9.3-beta/servers/fastapi
+    try:
+        pres_dir = _pr() / "side-projects" / "presenton-electron-v0.9.3-beta" / "servers"
+        results["presenton"] = pres_dir.is_dir()
+    except Exception:
+        results["presenton"] = False
+
+    # Ollama —— tools/ollama/ollama.exe 或配置里的路径
+    try:
+        ollama_path = _cfg_ollama_exe()
+        results["ollama"] = os.path.isfile(ollama_path) if ollama_path else False
+    except Exception:
+        results["ollama"] = False
+
+    # AutoLabel —— side-projects/autolabel-dock-main/main.py
+    try:
+        al_dir = _pr() / "side-projects" / "autolabel-dock-main" / "main.py"
+        results["autolabel"] = al_dir.is_file()
+    except Exception:
+        results["autolabel"] = False
+
+    return results
 
 
 @app.get("/api/paper-source")
@@ -1179,6 +1446,63 @@ async def _handle_music_control(ws, msg, client_type):
     return client_type
 
 
+async def _handle_personality_state(ws, msg, client_type):
+    """返回当前 15 维人格状态"""
+    from agent.personality import get_state, generate_prompt as _gp
+    try:
+        dims = get_state()
+        labels = _gp()
+        await _send_ws(ws, {"type": "personality_state_result",
+                           "dimensions": dims, "prompt_fragment": labels})
+    except Exception as e:
+        await _send_ws(ws, {"type": "personality_state_result",
+                           "error": str(e)})
+    return client_type
+
+
+async def _handle_reminders_list(ws, msg, client_type):
+    """列出待提醒"""
+    from agent.tools.custom.reminder import get_pending
+    await _send_ws(ws, {"type": "reminders_list_result", "reminders": get_pending()})
+    return client_type
+
+
+async def _handle_reminder_cancel(ws, msg, client_type):
+    """取消提醒"""
+    rid = msg.get("id", 0)
+    from agent.tools.custom.reminder import cancel, get_pending
+    cancel(int(rid))
+    await _send_ws(ws, {"type": "reminders_list_result", "reminders": get_pending()})
+    return client_type
+
+
+async def _handle_wellness_response(ws, msg, client_type):
+    """用户响应健康提醒（喝水/吃饭）"""
+    kind = msg.get("kind", "water")
+    action = msg.get("action", "drank")
+    from agent.personality.wellness import record_response
+    result = record_response(kind, action)
+    await _send_ws(ws, {"type": "wellness_ack", "kind": kind, "action": action,
+                       "personality_message": result.get("personality_message", "")})
+    return client_type
+
+
+async def _handle_wellness_config(ws, msg, client_type):
+    """获取健康提醒配置"""
+    from agent.personality.wellness import get_config
+    await _send_ws(ws, {"type": "wellness_config_result", "config": get_config()})
+    return client_type
+
+
+async def _handle_wellness_config_save(ws, msg, client_type):
+    """保存健康提醒配置"""
+    data = msg.get("config", {})
+    from agent.personality.wellness import update_config
+    cfg = update_config(data)
+    await _send_ws(ws, {"type": "wellness_config_result", "config": cfg})
+    return client_type
+
+
 async def _handle_comfyui_status(ws, msg, client_type):
     """查询 ComfyUI 运行状态"""
     from agent.utils import is_port_open
@@ -1426,7 +1750,7 @@ async def _handle_shutdown(ws, msg, client_type):
         except Exception:
             pass
     if "jadeai" not in keep:
-        await _kill_port(3000)
+        await _kill_port(3002)
 
     await _send_ws(ws, {"type": "shutdown_result", "success": True,
                        "message": "程序即将退出"})
@@ -1442,17 +1766,34 @@ async def _handle_shutdown(ws, msg, client_type):
 
 
 async def _kill_port(port: int) -> bool:
-    """杀掉指定端口的进程，返回是否成功。"""
-    import subprocess as _sp
+    """暴力杀掉指定端口的进程（含子进程），并验证端口是否释放。
+    对 next dev --webpack 这种多进程子进程模式尤其关键。"""
+    import subprocess as _sp, time
+    killed = set()
     try:
         r = _sp.run(["cmd", "/c", f"netstat -ano | findstr :{port} | findstr LISTENING"],
                    capture_output=True, text=True, timeout=10)
+        pids = []
         for line in r.stdout.strip().split("\n"):
             parts = line.strip().split()
             if parts and parts[-1].isdigit():
-                _sp.run(["taskkill", "/F", "/PID", parts[-1]], capture_output=True)
-                logger.info(f"[stop:{port}] killed PID={parts[-1]}")
-        return True
+                pids.append(parts[-1])
+        # 第一轮：逐个 taskkill /F /T（带子树）
+        for pid in pids:
+            _sp.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True)
+            killed.add(pid)
+            logger.info(f"[stop:{port}] killed PID={pid} (+children)")
+        # 第二轮（兜底）：对整个端口强杀所有关联进程
+        if port in (3000, 18001):
+            _sp.run(["cmd", "/c", f"for /f \"tokens=5\" %a in ('netstat -ano ^| findstr :{port} ^| findstr LISTENING') do @taskkill /F /T /PID %a >nul 2>&1"], capture_output=True, timeout=10)
+            time.sleep(1.5)
+        # 验证端口是否释放
+        r2 = _sp.run(["cmd", "/c", f"netstat -ano | findstr :{port} | findstr LISTENING"],
+                    capture_output=True, text=True, timeout=5)
+        still_listening = bool(r2.stdout.strip())
+        if still_listening:
+            logger.warning(f"[stop:{port}] 端口仍被占用，已穷尽杀手锏")
+        return not still_listening
     except Exception as e:
         logger.info(f"[stop:{port}] error: {e}")
         return False
@@ -1490,6 +1831,78 @@ async def _handle_tts_stop(ws, msg, client_type):
 async def _handle_jadeai_stop(ws, msg, client_type):
     await _kill_port(3000)
     await _send_ws(ws, {"type": "jadeai_stop_result", "success": True, "message": "JadeAI 已关闭"})
+    return client_type
+
+
+# ==================== Presenton PPT 生成服务 ====================
+PRESENTON_BACKEND_PORT = 18001
+PRESENTON_FRONTEND_PORT = 3000
+
+
+@app.get("/api/presenton-status")
+async def rest_presenton_status():
+    """前端按钮通过同源 HTTP 查 Presenton 真实状态（绕过跨域限制）"""
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=4) as client:
+            r = await client.get(f"http://127.0.0.1:{PRESENTON_BACKEND_PORT}/docs")
+        return {"running": r.status_code < 500}
+    except Exception:
+        return {"running": False}
+
+
+async def _handle_presenton_status(ws, msg, client_type):
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=4) as c:
+            r = await c.get(f"http://127.0.0.1:{PRESENTON_BACKEND_PORT}/docs")
+        running = r.status_code == 200
+    except Exception:
+        running = False
+    await _send_ws(ws, {"type": "presenton_status", "running": running,
+                        "message": "Presenton 在线" if running else "Presenton 未启动"})
+    return client_type
+
+
+async def _handle_presenton_start(ws, msg, client_type):
+    logger.info("[presenton_start] 收到启动请求")
+    import threading
+
+    def _bg_start():
+        try:
+            from agent.tools.custom import presenton_bridge as pb
+            if not pb._prepare_env_and_deps():
+                logger.info("[presenton_start] 依赖准备失败")
+                return
+            pb._start_nextjs_frontend()
+            pb._start_server(images=True)
+            logger.info("[presenton_start] 启动完成")
+        except Exception as e:
+            logger.info(f"[presenton_start] 启动异常: {e}")
+
+    threading.Thread(target=_bg_start, daemon=True, name="presenton-start").start()
+    await _send_ws(ws, {"type": "presenton_start_result", "success": True,
+                        "message": "Presenton 正在启动（前端+后端，约需 30-60 秒）"})
+    return client_type
+
+
+async def _handle_presenton_stop(ws, msg, client_type):
+    logger.info("[presenton_stop] 正在关闭 Presenton...")
+    import asyncio, time
+    killed_backend = await _kill_port(PRESENTON_BACKEND_PORT)
+    killed_frontend = await _kill_port(PRESENTON_FRONTEND_PORT)
+    await asyncio.sleep(1.5)  # 留时间给端口释放
+    # 停止后推真实状态给前端，按钮立即刷新
+    try:
+        import httpx
+        async with httpx.AsyncClient(timeout=3) as c:
+            r = await c.get(f"http://127.0.0.1:{PRESENTON_BACKEND_PORT}/docs")
+        backend_alive = r.status_code < 500
+    except Exception:
+        backend_alive = False
+    still_running = backend_alive or (not killed_backend and not killed_frontend)
+    await _send_ws(ws, {"type": "presenton_status", "running": not still_running,
+                        "message": "Presenton 已关闭" if not still_running else "Presenton 可能未完全关闭"})
     return client_type
 
 
@@ -1603,6 +2016,12 @@ _HANDLERS = {
     "comfyui_status":    _handle_comfyui_status,
     "comfyui_start":     _handle_comfyui_start,
     "comfyui_restart":   _handle_comfyui_restart,
+    "personality_state":  _handle_personality_state,
+    "reminders_list":     _handle_reminders_list,
+    "reminder_cancel":    _handle_reminder_cancel,
+    "wellness_response":  _handle_wellness_response,
+    "wellness_config":    _handle_wellness_config,
+    "wellness_config_save": _handle_wellness_config_save,
     "tts_start":         _handle_tts_restart,
     "tts_status":        _handle_tts_status,
     "tts_restart":       _handle_tts_restart,
@@ -1611,6 +2030,9 @@ _HANDLERS = {
     "jadeai_start":      _handle_jadeai_restart,
     "jadeai_status":     _handle_jadeai_status,
     "jadeai_restart":    _handle_jadeai_restart,
+    "presenton_start":   _handle_presenton_start,
+    "presenton_status":  _handle_presenton_status,
+    "presenton_stop":    _handle_presenton_stop,
     "comfyui_stop":      _handle_comfyui_stop,
     "tts_stop":          _handle_tts_stop,
     "jadeai_stop":       _handle_jadeai_stop,
@@ -1762,14 +2184,14 @@ async def chattts_proxy(request: Request, path: str = ""):
 
 
 # ==================== JadeAI 反向代理 ====================
-# 所有 /jade/* 请求透明转发到 JadeAI Next.js 服务（localhost:3000）
+# 所有 /jade/* 请求透明转发到 JadeAI Next.js 服务（localhost:3002）
 # JadeAI 配置了 basePath="/jade"，因此路径无需重写
 from server.proxy import proxy_to_jade
 
 
 @app.api_route("/jade/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
 async def jade_proxy(request: Request, path: str = ""):
-    """代理所有 /jade/* 请求到 JadeAI Next.js 服务（localhost:3000）"""
+    """代理所有 /jade/* 请求到 JadeAI Next.js 服务（localhost:3002）"""
     return await proxy_to_jade(request, path)
 
 

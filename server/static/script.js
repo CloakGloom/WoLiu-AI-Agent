@@ -18,7 +18,7 @@ function connect() {
         updateWsStatus('已连接', '#52C41A');
         ws.send(JSON.stringify({ type: 'register', client_type: 'pc' }));
         clearReconnect();
-        // 连接后检查 ComfyUI 状态
+        // 连接后检查 ComfyUI 状态 & 绘画模型
         setTimeout(() => {
             if (ws && ws.readyState === WebSocket.OPEN) {
                 ws.send(JSON.stringify({ type: 'comfyui_status' }));
@@ -139,6 +139,14 @@ function handleMessage(msg) {
                 document.getElementById('comfyui-status').textContent = msg.message;
             }
             break;
+
+        case 'personality_state_result':
+            if (typeof renderPersonalityState === 'function') {
+                renderPersonalityState(msg);
+            }
+            break;
+        case 'personality_list_result':
+        case 'personality_switch_result':
         case 'comfyui_restart_result':
             if (msg.success) {
                 updateComfyUIButton(true);
@@ -189,7 +197,7 @@ function createProcessGroup() {
     const toggle = document.createElement('button');
     toggle.className = 'process-toggle';
     toggle.innerHTML = `
-        <span class="toggle-icon">&#9654;</span>
+        <span class="toggle-icon"><i class="fas fa-caret-right"></i></span>
         <span>思考过程</span>
         <span class="process-summary">正在思考...</span>
     `;
@@ -594,7 +602,7 @@ function loadHistory(msgs) {
     if (!msgs || msgs.length === 0) {
         container.innerHTML = `
             <div class="welcome-message">
-                <div class="welcome-icon">🤖</div>
+                <div class="welcome-icon"><i class="fas fa-robot"></i></div>
                 <h3>欢迎使用 AI Agent</h3>
                 <p>Agent 当前在电脑端运行<br>输入消息开始对话</p>
             </div>`;
@@ -665,7 +673,7 @@ function renderHistoryProcessSteps(steps) {
     const toggle = document.createElement('button');
     toggle.className = 'process-toggle';
     toggle.innerHTML = `
-        <span class="toggle-icon">&#9654;</span>
+        <span class="toggle-icon"><i class="fas fa-caret-right"></i></span>
         <span>思考过程</span>
         <span class="process-summary">${formatSummary(steps)}</span>
     `;
@@ -759,7 +767,7 @@ function addMessage(role, content, messageId, branches, chunkIndex, chunkTotal) 
                 <div class="msg-bubble">${formatMessageContent(content)}</div>
             </div>`;
     } else {
-        const avatarEmoji = role === 'user' ? '👤' : '🤖';
+        const avatarEmoji = role === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
         const label = role === 'user' ? '你' : 'Agent';
         const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
@@ -767,27 +775,27 @@ function addMessage(role, content, messageId, branches, chunkIndex, chunkTotal) 
         let menuHtml = '';
         if (role === 'user') {
             menuHtml = `
-                <button class="msg-more" onclick="toggleMsgMenu(event, ${msgId})" title="更多">⋮</button>
+                <button class="msg-more" onclick="toggleMsgMenu(event, ${msgId})" title="更多"><i class="fas fa-ellipsis-vertical"></i></button>
                 <div class="msg-menu" id="msgMenu-${msgId}">
                     <button class="session-menu-item" onclick="msgCopy(event, ${msgId})">
-                        <span class="menu-icon">📋</span> 复制
+                        <span class="menu-icon"><i class="fas fa-clipboard"></i></span> 复制
                     </button>
                     <button class="session-menu-item" onclick="${isTemp ? 'alert(\'请刷新页面后再编辑\')' : 'msgEditUser(event, ' + msgId + ')'}">
-                        <span class="menu-icon">✏️</span> 编辑
+                        <span class="menu-icon"><i class="fas fa-pen-to-square"></i></span> 编辑
                     </button>
                     <button class="session-menu-item danger" onclick="${isTemp ? 'alert(\'请刷新页面后再删除\')' : 'msgDelete(event, ' + msgId + ')'}">
-                        <span class="menu-icon">🗑</span> 删除
+                        <span class="menu-icon"><i class="fas fa-trash-can"></i></span> 删除
                     </button>
                 </div>`;
         } else {
             menuHtml = `
-                <button class="msg-more" onclick="toggleMsgMenu(event, ${msgId})" title="更多">⋮</button>
+                <button class="msg-more" onclick="toggleMsgMenu(event, ${msgId})" title="更多"><i class="fas fa-ellipsis-vertical"></i></button>
                 <div class="msg-menu" id="msgMenu-${msgId}">
                     <button class="session-menu-item" onclick="msgCopy(event, ${msgId})">
-                        <span class="menu-icon">📋</span> 复制
+                        <span class="menu-icon"><i class="fas fa-clipboard"></i></span> 复制
                     </button>
                     <button class="session-menu-item danger" onclick="${isTemp ? 'alert(\'请刷新页面后再删除\')' : 'msgDelete(event, ' + msgId + ')'}">
-                        <span class="menu-icon">🗑</span> 删除
+                        <span class="menu-icon"><i class="fas fa-trash-can"></i></span> 删除
                     </button>
                 </div>`;
         }
@@ -803,9 +811,9 @@ function addMessage(role, content, messageId, branches, chunkIndex, chunkTotal) 
                 row.dataset.branches = JSON.stringify(branchList);
                 branchHtml = `
                     <div class="branch-nav">
-                        <button class="branch-arrow" onclick="switchBranch(event, ${msgId}, -1)" title="上一个分支">◀</button>
+                        <button class="branch-arrow" onclick="switchBranch(event, ${msgId}, -1)" title="上一个分支"><i class="fas fa-chevron-left"></i></button>
                         <span class="branch-label">分支 1/${branchList.length + 1}</span>
-                        <button class="branch-arrow" onclick="switchBranch(event, ${msgId}, 1)" title="下一个分支">▶</button>
+                        <button class="branch-arrow" onclick="switchBranch(event, ${msgId}, 1)" title="下一个分支"><i class="fas fa-chevron-right"></i></button>
                     </div>`;
             }
         }
@@ -974,18 +982,18 @@ function renderPaperEmbed(pdfUrl) {
     const filename = pdfUrl.split('/').pop();
     const name = filename.replace(/\.(pdf|pptx)$/i, '');
     const isPptx = /\.pptx$/i.test(filename);
-    const icon = isPptx ? '📊' : '📄';
+    const icon = isPptx ? '<i class="fas fa-file-powerpoint"></i>' : '<i class="fas fa-file-pdf"></i>';
     const label = isPptx ? 'PPT 演示文稿' : '论文文档';
-    const downloadLabel = isPptx ? '⬇ 下载PPT' : '⬇ 下载PDF';
+    const downloadLabel = isPptx ? '<i class="fas fa-download"></i> 下载PPT' : '<i class="fas fa-download"></i> 下载PDF';
     const previewHint = isPptx ? '点击后将自动转换为PDF并加载预览' : '点击后将在下方加载PDF预览';
     return `
         <div class="paper-embed" style="margin:12px -8px;border:1px solid #e0e0e0;border-radius:8px;overflow:hidden;background:#fff;min-width:560px">
             <div class="paper-header" style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;background:#f5f5f5;border-bottom:1px solid #e0e0e0;flex-wrap:wrap;gap:4px">
                 <span style="font-size:14px;font-weight:600">${icon} ${label}</span>
                 <div style="display:flex;flex-wrap:wrap;gap:4px">
-                    <button onclick="openPapersFolder()" style="font-size:13px;color:#4a90d9;background:none;border:none;cursor:pointer;text-decoration:none;white-space:nowrap">📁 打开文件夹</button>
-                    ${isPptx ? '' : `<button onclick="editPaperContent('${name}')" style="font-size:13px;color:#4a90d9;background:none;border:none;cursor:pointer;text-decoration:none;white-space:nowrap">✏️ 修改文档</button>`}
-                    <a href="${pdfUrl}" target="_blank" style="font-size:13px;color:#4a90d9;text-decoration:none;white-space:nowrap">🔍 新窗口查看</a>
+                    <button onclick="openPapersFolder()" style="font-size:13px;color:#4a90d9;background:none;border:none;cursor:pointer;text-decoration:none;white-space:nowrap"><i class="fas fa-folder-open"></i> 打开文件夹</button>
+                    ${isPptx ? '' : `<button onclick="editPaperContent('${name}')" style="font-size:13px;color:#4a90d9;background:none;border:none;cursor:pointer;text-decoration:none;white-space:nowrap"><i class="fas fa-pen-to-square"></i> 修改文档</button>`}
+                    <a href="${pdfUrl}" target="_blank" style="font-size:13px;color:#4a90d9;text-decoration:none;white-space:nowrap"><i class="fas fa-magnifying-glass"></i> 新窗口查看</a>
                     <a href="${pdfUrl}" download style="font-size:13px;color:#4a90d9;text-decoration:none;white-space:nowrap">${downloadLabel}</a>
                 </div>
             </div>
@@ -1009,7 +1017,7 @@ function loadPaperPreview(containerId, pdfUrl) {
     let previewUrl = pdfUrl;
     if (/\.pptx$/i.test(filename)) {
         previewUrl = '/api/pptx-preview/' + encodeURIComponent(filename);
-        container.innerHTML = `<div style="padding:40px;text-align:center;background:#fafafa;color:#999">⏳ 正在转换 PPT 为 PDF，请稍候...</div>`;
+        container.innerHTML = `<div style="padding:40px;text-align:center;background:#fafafa;color:#999"><i class="fas fa-hourglass-half"></i> 正在转换 PPT 为 PDF，请稍候...</div>`;
         const iframe = document.createElement('iframe');
         iframe.src = previewUrl;
         iframe.style.cssText = 'width:100%;height:600px;border:none;display:none';
@@ -1119,7 +1127,7 @@ async function regeneratePaper() {
                     iframe.src = iframe.src;
                 }
             }
-            addMessage('system', '✅ 论文已重新生成，刷新预览即可查看最新版本。');
+            addMessage('system', '<i class="fas fa-circle-check"></i> 论文已重新生成，刷新预览即可查看最新版本。');
         } else {
             alert('生成失败：' + (data.error || '请重试'));
         }
@@ -1147,7 +1155,7 @@ function addImageMessage(imgUrl, caption) {
     const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
     row.innerHTML = `
-        <div class="msg-avatar">🤖</div>
+        <div class="msg-avatar"><i class="fas fa-robot"></i></div>
         <div class="msg-content">
             <div class="msg-label">Agent</div>
             <div class="msg-bubble">
@@ -1181,9 +1189,9 @@ async function onFileSelected(input) {
                 const sizeStr = data.size < 1024 ? `${data.size}B`
                     : data.size < 1024 * 1024 ? `${(data.size / 1024).toFixed(1)}KB`
                     : `${(data.size / (1024 * 1024)).toFixed(1)}MB`;
-                addMessage('system', `📎 已上传：${data.filename}（${sizeStr}）\n绝对路径：I:/Agent/data/${data.path}`);
+                addMessage('system', `<i class="fas fa-paperclip"></i> 已上传：${data.filename}（${sizeStr}）\n绝对路径：I:/Agent/data/${data.path}`);
                 // 同步通知 Agent
-                wsSend({ type: 'chat', content: `📎 文件已上传：${data.filename}\n绝对路径：I:/Agent/data/${data.path}` });
+                wsSend({ type: 'chat', content: `<i class="fas fa-paperclip"></i> 文件已上传：${data.filename}\n绝对路径：I:/Agent/data/${data.path}` });
             } else {
                 addMessage('system', `上传失败：${data.error}`);
             }
@@ -1200,7 +1208,7 @@ function sendMessage() {
     const text = input.value.trim();
     if (!text || !isAgentOnline || isMigrating) return;
     if (!wsSend({ type: 'chat', content: text })) {
-        addMessage('system', '⚠️ 连接已断开，正在重连，请稍后重试');
+        addMessage('system', '<i class="fas fa-triangle-exclamation"></i> 连接已断开，正在重连，请稍后重试');
         return;
     }
     addMessage('user', text);
@@ -1261,28 +1269,28 @@ function renderSessionList(sessions, current) {
         item.dataset.sessionId = s.session_id;
         item.innerHTML = `
             <span class="session-check" onclick="toggleSessionCheck(event, '${s.session_id}')"></span>
-            <span class="pin-icon" title="已置顶">📌</span>
-            <div class="session-icon">💬</div>
+            <span class="pin-icon" title="已置顶"><i class="fas fa-thumbtack"></i></span>
+            <div class="session-icon"><i class="fas fa-comment-dots"></i></div>
             <div class="session-info">
                 <div class="session-title">${escapeHtml(displayTitle)}</div>
                 <div class="session-meta">${s.message_count || 0} 条消息</div>
             </div>
-            <button class="session-more" onclick="toggleSessionMenu(event, '${s.session_id}')" title="更多">⋮</button>
+            <button class="session-more" onclick="toggleSessionMenu(event, '${s.session_id}')" title="更多"><i class="fas fa-ellipsis-vertical"></i></button>
             <div class="session-menu" id="menu-${s.session_id}">
                 <button class="session-menu-item" onclick="sessionDetail(event, '${s.session_id}')">
-                    <span class="menu-icon">ℹ️</span> 详情
+                    <span class="menu-icon"><i class="fas fa-circle-info"></i></span> 详情
                 </button>
                 <button class="session-menu-item" onclick="sessionRename(event, '${s.session_id}', '${escapeHtml(s.title || s.session_id).replace(/'/g, "\\'")}')">
-                    <span class="menu-icon">✏️</span> 改名
+                    <span class="menu-icon"><i class="fas fa-pen-to-square"></i></span> 改名
                 </button>
                 <button class="session-menu-item" onclick="sessionPin(event, '${s.session_id}', ${isPinned ? 'false' : 'true'})">
-                    <span class="menu-icon">${isPinned ? '📌' : '📍'}</span> ${isPinned ? '取消置顶' : '置顶'}
+                    <span class="menu-icon"><i class="fas fa-thumbtack"></i></span> ${isPinned ? '取消置顶' : '置顶'}
                 </button>
                 <button class="session-menu-item" onclick="sessionDuplicate(event, '${s.session_id}')">
-                    <span class="menu-icon">📋</span> 复制对话
+                    <span class="menu-icon"><i class="fas fa-clipboard"></i></span> 复制对话
                 </button>
                 <button class="session-menu-item danger" onclick="sessionDelete(event, '${s.session_id}')">
-                    <span class="menu-icon">🗑</span> 删除
+                    <span class="menu-icon"><i class="fas fa-trash-can"></i></span> 删除
                 </button>
             </div>
         `;
@@ -1585,9 +1593,9 @@ function updateBranchNav(userMessageId) {
                 var label = row.querySelector('.branch-label');
                 if (!nav) {
                     var html = `<div class="branch-nav">
-                        <button class="branch-arrow" onclick="switchBranch(event, ${userMessageId}, -1)">◀</button>
+                        <button class="branch-arrow" onclick="switchBranch(event, ${userMessageId}, -1)"><i class="fas fa-chevron-left"></i></button>
                         <span class="branch-label">分支 1/${branches.length + 1}</span>
-                        <button class="branch-arrow" onclick="switchBranch(event, ${userMessageId}, 1)">▶</button>
+                        <button class="branch-arrow" onclick="switchBranch(event, ${userMessageId}, 1)"><i class="fas fa-chevron-right"></i></button>
                     </div>`;
                     row.querySelector('.msg-footer')?.insertAdjacentHTML('afterbegin', html);
                 } else if (label) {
@@ -1783,7 +1791,7 @@ function clearChat() {
         const container = document.getElementById('chatMessages');
         container.innerHTML = `
             <div class="welcome-message">
-                <div class="welcome-icon">🤖</div>
+                <div class="welcome-icon"><i class="fas fa-robot"></i></div>
                 <h3>聊天记录已清空</h3>
                 <p>输入消息开始新对话</p>
             </div>`;
@@ -1850,7 +1858,7 @@ function initSpineAnimation() {
     function fallbackAvatar() {
         const spineContainer = document.getElementById('spineContainer');
         if (spineContainer) {
-            spineContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:48px;">🤖</div>';
+            spineContainer.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-size:48px;"><i class="fas fa-robot"></i></div>';
         }
     }
 
@@ -2080,7 +2088,7 @@ function toggleAutostart(service) {
 function updateAutostartBtn(service, enabled) {
     var btn = document.getElementById('as-' + service);
     if (!btn) return;
-    btn.className = 'autostart-btn' + (enabled ? ' on' : '');
+    btn.className = 'svc-btn svc-btn--auto' + (enabled ? ' is-on' : '');
     btn.textContent = enabled ? '已自启' : '自启动';
 }
 function loadAutostartConfig() {
@@ -2128,7 +2136,7 @@ function updateComfyUIButton(running) {
     if (!btn || !status) return;
 
     if (running) {
-        btn.className = 'comfyui-btn on';
+        btn.className = 'svc-btn svc-btn--toggle is-on';
         btn.textContent = '已就绪';
         btn.title = '点击关闭 ComfyUI';
         btn.onclick = stopComfyUI;
@@ -2141,7 +2149,7 @@ function updateComfyUIButton(running) {
     } else {
         // 启动中不切换到"已关闭"
         if (comfyuiStarting) return;
-        btn.className = 'comfyui-btn off';
+        btn.className = 'svc-btn svc-btn--toggle is-off';
         btn.textContent = '已关闭';
         btn.title = '点击开启 ComfyUI';
         btn.onclick = toggleComfyUI;
@@ -2155,13 +2163,13 @@ function stopComfyUI() {
     var btn = document.getElementById('comfyui-btn'), st = document.getElementById('comfyui-status');
     if (!btn) return;
     // 关闭中过渡态
-    btn.className = 'comfyui-btn loading'; btn.textContent = '关闭中...';
+    btn.className = 'svc-btn svc-btn--toggle is-loading'; btn.textContent = '关闭中...';
     btn.onclick = null; btn.onmouseenter = null; btn.onmouseleave = null;
     if(st) st.textContent = '正在关闭...';
     if(ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({type:'comfyui_stop'}));
     // 2秒后确认已关闭（给进程 kill 时间）
     setTimeout(function(){
-        btn.className = 'comfyui-btn off'; btn.textContent = '已关闭';
+        btn.className = 'svc-btn svc-btn--toggle is-off'; btn.textContent = '已关闭';
         btn.onclick = toggleComfyUI;
         btn.onmouseenter = function() { this.textContent = '开启'; };
         btn.onmouseleave = function() { this.textContent = '已关闭'; };
@@ -2175,7 +2183,7 @@ function toggleComfyUI() {
     if (!btn || !status) return;
 
     comfyuiStarting = true;
-    btn.className = 'comfyui-btn loading';
+    btn.className = 'svc-btn svc-btn--toggle is-loading';
     btn.textContent = '启动中...';
     btn.title = '';
     btn.onclick = null;
@@ -2198,7 +2206,7 @@ function restartComfyUI() {
     }
 
     console.log('[restartComfyUI] 设置加载状态，发送 comfyui_restart');
-    btn.className = 'comfyui-btn loading';
+    btn.className = 'svc-btn svc-btn--toggle is-loading';
     btn.textContent = '重启中...';
     btn.title = '';
     btn.onclick = null;
@@ -2231,6 +2239,7 @@ function pollComfyUIStatus() {
         }
     }, 2000);
 }
+
 
 // ===== 服务管理面板 =====
 function openServicesPanel() {

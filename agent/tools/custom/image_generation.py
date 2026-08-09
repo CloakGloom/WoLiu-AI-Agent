@@ -1,7 +1,8 @@
 """
-AI 绘画工具 —— 通过 ComfyUI API 双风格绘画
+AI 绘画工具 —— 通过 ComfyUI API 三模型绘画
   - 写实（默认）：Z-Image-Turbo，8 步 turbo 推理，秒级出图
   - 动漫：NetaYume Lumina 3.5，30 步高质量二次元插画
+  - 视频：WAN 2.1 T2V，文本生成视频
 """
 
 import os
@@ -24,6 +25,23 @@ OUTPUT_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.pat
 CLIENT_ID = str(uuid.uuid4())
 
 _comfyui_proc = None  # ComfyUI 子进程引用
+_DRAWING_MODEL = "写实"  # 当前选中的绘画模型：写实 / 动漫 / 视频
+
+
+def set_drawing_model(model: str):
+    """设置当前绘画模型（由前端按钮触发）"""
+    global _DRAWING_MODEL
+    if model in ("写实", "动漫", "视频"):
+        _DRAWING_MODEL = model
+        print(f"[AI绘画] 模型已切换为: {model}", flush=True)
+        return True
+    return False
+
+
+def get_drawing_model() -> str:
+    """获取当前绘画模型"""
+    return _DRAWING_MODEL
+
 
 SCHEMA = {
     "type": "function",
@@ -31,28 +49,29 @@ SCHEMA = {
     "function": {
         "name": "generate_image",
         "description": (
-            "使用AI绘画生成图片。默认生成写实风格（真实照片级）的高质量图片，"
-            "也支持动漫二次元风格。根据文字描述智能出图。"
+            "使用AI绘画生成图片或视频。支持三种模型：写实（真实照片级，Z-Image-Turbo，速度快）、"
+            "动漫（二次元插画，NetaYume Lumina 3.5）、视频（文本生成视频，WAN 2.1）。"
+            "优先使用写实模型，除非用户明确要求动漫风格或视频生成。"
         ),
         "parameters": {
             "type": "object",
             "properties": {
                 "prompt": {
                     "type": "string",
-                    "description": "图片描述/提示词，描述你想要生成的画面内容。写实风格建议用英文描述，动漫风格中英文皆可。"
+                    "description": "图片/视频描述提示词。写实风格建议用英文描述，动漫风格中英文皆可，视频用英文最佳。"
                 },
                 "style": {
                     "type": "string",
-                    "enum": ["写实", "动漫"],
-                    "description": "图片风格。请始终使用写实（真实照片级，Z-Image-Turbo，速度快），除非用户明确要求动漫二次元画风。"
+                    "enum": ["写实", "动漫", "视频"],
+                    "description": "生成风格。写实=真实照片级图片(Z-Image-Turbo)，动漫=二次元插画(NetaYume)，视频=文本生成视频(WAN 2.1)。默认使用写实。"
                 },
                 "negative_prompt": {
                     "type": "string",
-                    "description": "负面提示词，描述不想要出现在画面中的内容。仅动漫风格有效，写实风格不需要。（可选）"
+                    "description": "负面提示词，描述不想要出现在画面中的内容。动漫和视频风格有效，写实风格不需要。（可选）"
                 },
                 "seed": {
                     "type": "integer",
-                    "description": "随机种子，相同种子+相同提示词会生成相同图片。不填则随机。（可选）"
+                    "description": "随机种子，相同种子+相同提示词会生成相同内容。不填则随机。（可选）"
                 }
             },
             "required": ["prompt"]
@@ -296,6 +315,143 @@ def _build_zimage_api_prompt(user_prompt: str, seed: int) -> dict:
     }
 
 
+# ==================== 视频风格（WAN 2.1 T2V） ====================
+
+# WAN 2.1 T2V 模型文件
+WAN_MODELS = {
+    "unet": {
+        "rel_path": "diffusion_models/wan2.1_t2v_14B_bf16.safetensors",
+        "label": "WAN2.1 T2V UNET (wan2.1_t2v_14B)",
+    },
+    "vae": {
+        "rel_path": "vae/wan_2.1_vae.safetensors",
+        "label": "WAN2.1 VAE",
+    },
+    "clip": {
+        "rel_path": "text_encoders/umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+        "label": "WAN2.1 CLIP (umt5_xxl)",
+    },
+}
+
+# WAN 视频生成默认负向提示词
+WAN_DEFAULT_NEGATIVE = (
+    "色调艳丽，过曝，静态，细节模糊不清，字幕，风格，作品，画作，画面，静止，"
+    "整体发灰，最差质量，低质量，JPEG压缩残留，丑陋的，残缺的，多余的手指，"
+    "画得不好的手部，画得不好的面部，畸形的，变形，模糊，糟糕的解剖结构，"
+    "糟糕的比例，多余的肢体，克隆的脸，毁容，总体比例，畸形，最差质量，"
+    "正常质量，低质量，低分辨率，糟糕的阴影，多余的腿，畸形的手指，扭曲的手指"
+)
+
+
+def _check_wan_models() -> str:
+    """检查 WAN 2.1 模型文件是否就位"""
+    models_dir = os.path.join(COMFYUI_PATH, "ComfyUI", "models")
+    missing = []
+    for key, info in WAN_MODELS.items():
+        full_path = os.path.join(models_dir, info["rel_path"])
+        if not os.path.exists(full_path):
+            missing.append(f"  - {info['label']}: {info['rel_path']}")
+    if missing:
+        return (
+            "WAN 2.1 视频模型缺失，请先下载以下文件到 ComfyUI models 目录：\n"
+            + "\n".join(missing)
+            + "\n\n下载地址：https://huggingface.co/Wan-AI/Wan2.1-T2V-14B"
+        )
+    return ""
+
+
+def _build_wan_api_prompt(user_prompt: str, negative_prompt: str, seed: int,
+                          width: int = 832, height: int = 480, length: int = 33) -> dict:
+    """
+    WAN 2.1 T2V 视频生成工作流（简易版）。
+    节点拓扑（仅用原生节点，无需 WANVideo 自定义节点包）：
+      10(UNETLoader) → 20(KSampler)
+      14(VAELoader) → 22(VAEDecode)
+      11(CLIPLoader) → 15(CLIPTextEncode正) → 20(positive)
+      11(CLIPLoader) → 17(CLIPTextEncode负) → 20(negative)
+      13(EmptyHunyuanLatentVideo) → 20(latent)
+      20(KSampler) → 22(VAEDecode) → 24(VHS_VideoCombine) → 25(SaveImage)
+    """
+    return {
+        "10": {
+            "class_type": "UNETLoader",
+            "inputs": {
+                "unet_name": "wan2.1_t2v_14B_bf16.safetensors",
+                "weight_dtype": "fp8_e4m3fn",
+            },
+        },
+        "11": {
+            "class_type": "CLIPLoader",
+            "inputs": {
+                "clip_name": "umt5_xxl_fp8_e4m3fn_scaled.safetensors",
+                "type": "wan",
+                "device": "default",
+            },
+        },
+        "13": {
+            "class_type": "EmptyHunyuanLatentVideo",
+            "inputs": {
+                "width": width,
+                "height": height,
+                "length": length,
+                "batch_size": 1,
+            },
+        },
+        "14": {
+            "class_type": "VAELoader",
+            "inputs": {"vae_name": "wan_2.1_vae.safetensors"},
+        },
+        "15": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {"clip": ["11", 0], "text": user_prompt},
+        },
+        "17": {
+            "class_type": "CLIPTextEncode",
+            "inputs": {"clip": ["11", 0], "text": negative_prompt},
+        },
+        "20": {
+            "class_type": "KSampler",
+            "inputs": {
+                "seed": seed,
+                "steps": 20,
+                "cfg": 6,
+                "sampler_name": "uni_pc",
+                "scheduler": "simple",
+                "denoise": 1,
+                "model": ["10", 0],
+                "positive": ["15", 0],
+                "negative": ["17", 0],
+                "latent_image": ["13", 0],
+            },
+        },
+        "22": {
+            "class_type": "VAEDecode",
+            "inputs": {"samples": ["20", 0], "vae": ["14", 0]},
+        },
+        "24": {
+            "class_type": "VHS_VideoCombine",
+            "inputs": {
+                "images": ["22", 0],
+                "frame_rate": 16,
+                "loop_count": 0,
+                "filename_prefix": "wan2.1_t2v",
+                "format": "video/h264-mp4",
+                "pix_fmt": "yuv420p",
+                "crf": 19,
+                "save_metadata": True,
+                "pingpong": False,
+            },
+        },
+        "25": {
+            "class_type": "SaveImage",
+            "inputs": {
+                "images": ["22", 0],
+                "filename_prefix": "wan2.1_t2v_frames",
+            },
+        },
+    }
+
+
 # ==================== 风格自动识别 ====================
 
 # 动漫风格的触发关键词
@@ -304,12 +460,23 @@ _ANIME_KEYWORDS = [
     "赛璐璐", "cel shading", "手绘", "线稿", "平涂",
 ]
 
+# 视频生成的触发关键词
+_VIDEO_KEYWORDS = [
+    "视频", "video", "动画", "动态", "短视频", "短片", "生成视频",
+    "拍摄", "录像", "录制", "画面连续", "运动", "动作",
+]
+
 
 def _detect_style(user_prompt: str, explicit_style: str = None) -> str:
-    """根据显式参数或提示词内容判断风格，返回 "写实" 或 "动漫" """
+    """根据显式参数或提示词内容判断风格，返回 "写实" / "动漫" / "视频" """
     if explicit_style:
         return explicit_style
     prompt_lower = user_prompt.lower()
+    # 优先检测视频关键词
+    for kw in _VIDEO_KEYWORDS:
+        if kw in prompt_lower:
+            return "视频"
+    # 检测动漫关键词
     for kw in _ANIME_KEYWORDS:
         if kw in prompt_lower:
             return "动漫"
@@ -428,6 +595,7 @@ def _download_image(prompt_id: str, history: dict) -> str:
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     outputs = history.get("outputs", {})
     for node_id, node_output in outputs.items():
+        # 图片输出（SaveImage / PreviewImage）
         for img in node_output.get("images", []):
             filename = img["filename"]
             subfolder = img.get("subfolder", "")
@@ -436,6 +604,20 @@ def _download_image(prompt_id: str, history: dict) -> str:
             if subfolder:
                 params["subfolder"] = subfolder
             resp = requests.get(f"{COMFYUI_URL}/view", params=params, timeout=30)
+            resp.raise_for_status()
+            save_path = os.path.join(OUTPUT_DIR, filename)
+            with open(save_path, "wb") as f:
+                f.write(resp.content)
+            return f"/static/generated/{filename}"
+        # 视频输出（VHS_VideoCombine）
+        for vid in node_output.get("gifs", []):
+            filename = vid["filename"]
+            subfolder = vid.get("subfolder", "")
+            vid_type = vid.get("type", "output")
+            params = {"filename": filename, "subfolder": subfolder, "type": vid_type}
+            if not subfolder:
+                params.pop("subfolder", None)
+            resp = requests.get(f"{COMFYUI_URL}/view", params=params, timeout=60)
             resp.raise_for_status()
             save_path = os.path.join(OUTPUT_DIR, filename)
             with open(save_path, "wb") as f:
@@ -455,8 +637,15 @@ def execute(arguments: dict) -> str:
     if not user_prompt:
         return "请提供图片描述（prompt 参数）。"
 
-    # 确定风格
-    style = _detect_style(user_prompt, explicit_style)
+    # 确定风格：优先使用 AI 传入的 style 参数，其次使用前端选中的模型，最后自动检测
+    if explicit_style:
+        style = explicit_style
+    else:
+        # 使用前端选择的默认模型
+        style = _DRAWING_MODEL
+        # 如果前端选择了写实但 prompt 明显是动漫/视频内容，则自动切换
+        if style == "写实":
+            style = _detect_style(user_prompt, None)
 
     if seed is None:
         seed = random.randint(1, 2**63 - 1)
@@ -468,7 +657,22 @@ def execute(arguments: dict) -> str:
         if err:
             return err
 
-        if style == "写实":
+        if style == "视频":
+            # 检查视频模型是否就位
+            model_err = _check_wan_models()
+            if model_err:
+                return model_err
+
+            if not negative_prompt:
+                negative_prompt = WAN_DEFAULT_NEGATIVE
+
+            emit_progress("generate_image", 10, "已提交视频生成任务（WAN 2.1）...")
+            api_prompt = _build_wan_api_prompt(user_prompt, negative_prompt, seed)
+            prompt_id = _submit_prompt(api_prompt)
+            history = _wait_for_result(prompt_id, timeout=600, is_turbo=False)
+            style_label = "视频生成 (WAN 2.1)"
+
+        elif style == "写实":
             # 检查模型是否就位
             model_err = _check_zimage_models()
             if model_err:
@@ -490,20 +694,21 @@ def execute(arguments: dict) -> str:
             history = _wait_for_result(prompt_id, timeout=180, is_turbo=False)
             style_label = "动漫风格 (NetaYume Lumina 3.5)"
 
-        emit_progress("generate_image", 95, "正在保存图片...")
+        emit_progress("generate_image", 95, "正在保存文件...")
         image_url = _download_image(prompt_id, history)
-        emit_progress("generate_image", 100, "图片生成完成")
+        emit_progress("generate_image", 100, "生成完成")
 
         if image_url:
-            return f"[IMAGE:{image_url}]{style_label}图片已生成！（种子: {seed}）"
+            media_type = "视频" if style == "视频" else "图片"
+            return f"[IMAGE:{image_url}]{style_label}{media_type}已生成！（种子: {seed}）"
         else:
-            return "图片生成完成，但无法获取图片文件。"
+            return "生成完成，但无法获取输出文件。"
 
     except requests.exceptions.ConnectionError:
         return "ComfyUI 服务未连接，请确认 ComfyUI 已启动（端口 8188）。"
     except TimeoutError as e:
-        return f"图片生成超时：{e}"
+        return f"生成超时：{e}"
     except Exception as e:
-        return f"图片生成失败：{e}"
+        return f"生成失败：{e}"
 
-execute._timeout = 300.0  # AI 绘画最长 300 秒
+execute._timeout = 600.0  # AI 绘画/视频最长 600 秒

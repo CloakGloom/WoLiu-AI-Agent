@@ -7,7 +7,10 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <title>AI Agent</title>
     <link rel="stylesheet" href="/static/mobile.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
+        /* Font Awesome 全局微调 */
+        .fas,.far,.fab{font-size:inherit;vertical-align:-.125em}
         .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);padding:10px 24px;border-radius:20px;background:rgba(0,0,0,.75);color:#fff;font-size:13px;z-index:99999;pointer-events:none;opacity:0;transition:opacity .25s,transform .25s}
         .toast.show{opacity:1;transform:translateX(-50%) translateY(-6px)}
     </style>
@@ -18,7 +21,7 @@
 
     <!-- 顶部栏 -->
     <div class="mobile-topbar">
-        <button class="menu-btn" onclick="toggleDrawer()">☰</button>
+        <button class="menu-btn" onclick="toggleDrawer()"><i class="fas fa-bars"></i></button>
         <span class="title" id="mobileTitle">AI Agent</span>
         <button class="status-btn" id="mobileStatusBtn" onclick="toggleStatusPanel()" title="系统状态">
             <span class="status-dot" id="mobileStatusDot"></span>
@@ -39,17 +42,17 @@
         </div>
         <div class="agent-name">AI Agent</div>
         <div class="agent-device" id="agentDeviceText">当前在 电脑端</div>
-        <button class="character-toggle" onclick="toggleCharacter()" title="收起角色">▲</button>
+        <button class="character-toggle" onclick="toggleCharacter()" title="收起角色"><i class="fas fa-chevron-up"></i></button>
     </div>
     <div class="character-collapsed" id="characterCollapsed" style="display:none">
-        <button class="character-expand" onclick="toggleCharacter()">🤖 展开角色 ▼</button>
+        <button class="character-expand" onclick="toggleCharacter()"><i class="fas fa-robot"></i> 展开角色 <i class="fas fa-chevron-down"></i></button>
     </div>
 
     <!-- 快捷操作栏 -->
     <div class="mobile-quick-actions">
-        <button class="quick-btn" onclick="openServicesPanel()" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:0">⚙️ 服务</button>
-        <button class="quick-btn" onclick="openToolsLibrary()">📋 工具库</button>
-        <button class="quick-btn" onclick="openMemoryManager()">🧠 记忆</button>
+        <button class="quick-btn" onclick="openServicesPanel()" style="background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:0"><i class="fas fa-gear"></i> 服务</button>
+        <button class="quick-btn" onclick="openToolsLibrary()"><i class="fas fa-clipboard-list"></i> 工具库</button>
+        <button class="quick-btn" onclick="openMemoryManager()"><i class="fas fa-brain"></i> 记忆</button>
     </div>
 
     <!-- 迁移进度条 -->
@@ -59,7 +62,7 @@
 
     <!-- 音乐控制条 -->
     <div class="mobile-music-bar" id="mobileMusicBar">
-        <span class="music-icon">♫</span>
+        <span class="music-icon"><i class="fas fa-music"></i></span>
         <div class="music-info">
             <span class="music-title" id="mobileMusicTitle">--</span>
             <div class="music-progress-row">
@@ -69,10 +72,10 @@
             </div>
         </div>
         <div class="music-controls">
-            <button class="music-btn" title="上一首" onclick="mobileMusicAction('prev')">⏮</button>
-            <button class="music-btn music-btn-play" id="mobileMusicBtnPlay" title="暂停/播放" onclick="toggleMobileMusicPlay()">⏯</button>
-            <button class="music-btn" title="下一首" onclick="mobileMusicAction('next')">⏭</button>
-            <button class="music-btn music-btn-close" title="关闭" onclick="closeMobileMusicBar()">✕</button>
+            <button class="music-btn" title="上一首" onclick="mobileMusicAction('prev')"><i class="fas fa-backward-step"></i></button>
+            <button class="music-btn music-btn-play" id="mobileMusicBtnPlay" title="暂停/播放" onclick="toggleMobileMusicPlay()"><i class="fas fa-circle-pause"></i></button>
+            <button class="music-btn" title="下一首" onclick="mobileMusicAction('next')"><i class="fas fa-forward-step"></i></button>
+            <button class="music-btn music-btn-close" title="关闭" onclick="closeMobileMusicBar()"><i class="fas fa-xmark"></i></button>
         </div>
     </div>
 
@@ -82,8 +85,8 @@
         <div class="drawer-header">
             <h3>会话列表</h3>
             <div style="display:flex;gap:4px;">
-                <button class="new-btn" onclick="toggleSelectMode()" title="批量管理" style="font-size:11px;">☑</button>
-                <button class="new-btn" onclick="mobileNewSession()" title="新建会话">+</button>
+                <button class="new-btn" onclick="toggleSelectMode()" title="批量管理" style="font-size:11px;"><i class="fas fa-square-check"></i></button>
+                <button class="new-btn" onclick="mobileNewSession()" title="新建会话"><i class="fas fa-plus"></i></button>
             </div>
         </div>
         <div class="drawer-list" id="mobileSessionList"></div>
@@ -104,7 +107,7 @@
         <!-- 聊天区域 -->
         <div class="mobile-chat" id="mobileChat">
             <div class="welcome">
-                <div class="welcome-icon">🤖</div>
+                <div class="welcome-icon"><i class="fas fa-robot"></i></div>
                 <h3>欢迎使用 AI Agent</h3>
                 <p>Agent 当前在电脑端运行<br>输入消息开始对话</p>
             </div>
@@ -135,9 +138,9 @@
         <video id="cameraPreview" autoplay playsinline style="width:100%;flex:1;object-fit:cover"></video>
         <canvas id="cameraCanvas" style="display:none"></canvas>
         <div style="display:flex;justify-content:center;align-items:center;gap:20px;padding:16px;background:#000">
-            <button onclick="closeCamera()" style="width:48px;height:48px;border:none;background:rgba(255,255,255,0.2);color:#fff;border-radius:50%;font-size:20px;cursor:pointer">✕</button>
+            <button onclick="closeCamera()" style="width:48px;height:48px;border:none;background:rgba(255,255,255,0.2);color:#fff;border-radius:50%;font-size:20px;cursor:pointer"><i class="fas fa-xmark"></i></button>
             <button onclick="capturePhoto()" style="width:64px;height:64px;border:3px solid #fff;background:rgba(255,255,255,0.3);border-radius:50%;cursor:pointer"></button>
-            <button onclick="switchCamera()" style="width:48px;height:48px;border:none;background:rgba(255,255,255,0.2);color:#fff;border-radius:50%;font-size:18px;cursor:pointer">⟳</button>
+            <button onclick="switchCamera()" style="width:48px;height:48px;border:none;background:rgba(255,255,255,0.2);color:#fff;border-radius:50%;font-size:18px;cursor:pointer"><i class="fas fa-arrows-rotate"></i></button>
         </div>
     </div>
 
@@ -146,7 +149,7 @@
         <div style="background:#fff;border-radius:12px;width:94%;max-width:900px;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e0e0e0">
                 <div style="display:flex;align-items:center;gap:8px">
-                    <span style="font-size:15px;font-weight:600">✏️ 修改论文内容</span>
+                    <span style="font-size:15px;font-weight:600"><i class="fas fa-pen-to-square"></i> 修改论文内容</span>
                     <span id="paperEditFormat" style="font-size:11px;padding:2px 8px;border-radius:10px;background:#e3f2fd;color:#1565c0">Markdown</span>
                 </div>
                 <button onclick="closePaperEdit()" style="font-size:20px;background:none;border:none;cursor:pointer;color:#999;line-height:1">&times;</button>
@@ -169,7 +172,7 @@
         <div style="background:#fff;border-radius:12px;width:94%;max-width:800px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e0e0e0">
                 <div style="display:flex;align-items:center;gap:8px">
-                    <span style="font-size:15px;font-weight:600">📋 工具库</span>
+                    <span style="font-size:15px;font-weight:600"><i class="fas fa-clipboard-list"></i> 工具库</span>
                     <span id="toolsCount" style="font-size:11px;color:#999"></span>
                 </div>
                 <button onclick="closeToolsLibrary()" style="font-size:20px;background:none;border:none;cursor:pointer;color:#999;line-height:1">&times;</button>
@@ -191,23 +194,23 @@
     <div id="servicesModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
         <div style="background:#fff;border-radius:12px;width:92%;max-width:400px;max-height:80vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #e0e0e0">
-                <span style="font-size:15px;font-weight:600">⚙️ 服务管理</span>
+                <span style="font-size:15px;font-weight:600"><i class="fas fa-gear"></i> 服务管理</span>
                 <button onclick="closeServicesPanel()" style="font-size:20px;background:none;border:none;cursor:pointer;color:#999;line-height:1">&times;</button>
             </div>
             <div style="padding:16px;overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:14px">
                 <div style="border:1px solid #e8e8e8;border-radius:8px;padding:12px">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-                        <strong style="font-size:13px">🎨 AI 绘画</strong>
+                        <strong style="font-size:13px"><i class="fas fa-palette"></i> AI 绘画</strong>
                         <span id="comfyui-status" style="font-size:10px;color:#999;">点击按钮开启</span>
                     </div>
                     <button id="comfyui-btn" class="comfyui-btn off" onclick="toggleComfyUI()" style="font-size:12px;padding:4px 12px">未启动</button>
                 </div>
                 <div style="border:1px solid #e8e8e8;border-radius:8px;padding:12px">
-                    <strong style="font-size:13px">🔊 TTS 语音合成</strong>
+                    <strong style="font-size:13px"><i class="fas fa-volume-high"></i> TTS 语音合成</strong>
                     <span style="font-size:10px;color:#999;display:block;margin-top:2px">Confucius4-TTS · 14语言</span>
                 </div>
                 <div style="border:1px solid #e8e8e8;border-radius:8px;padding:12px">
-                    <strong style="font-size:13px">📋 JadeAI</strong>
+                    <strong style="font-size:13px"><i class="fas fa-clipboard-list"></i> JadeAI</strong>
                     <span style="font-size:10px;color:#999;display:block;margin-top:2px">AI简历 + 模拟面试</span>
                 </div>
             </div>
@@ -218,7 +221,7 @@
     <div id="memoryModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;align-items:center;justify-content:center">
         <div style="background:#fff;border-radius:12px;width:92%;max-width:420px;max-height:80vh;overflow:hidden;display:flex;flex-direction:column">
             <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #eee">
-                <span style="font-size:15px;font-weight:600">🧠 记忆管理</span>
+                <span style="font-size:15px;font-weight:600"><i class="fas fa-brain"></i> 记忆管理</span>
                 <span id="memTotal" style="font-size:11px;color:#999"></span>
                 <button onclick="closeMemoryManager()" style="background:none;border:none;font-size:20px;color:#999">&times;</button>
             </div>

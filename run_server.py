@@ -83,7 +83,7 @@ COMFYUI_PORT = 8188
 
 # JadeAI 配置
 JADEAI_DIR = os.path.join(PROJECT_ROOT, "side-projects", "JadeAI-0.4.1")
-JADEAI_PORT = 3000
+JADEAI_PORT = 3002
 _jadeai_proc = None
 _jadeai_started = False
 
@@ -312,14 +312,14 @@ def _start_ai_painting_services():
 
 
 def _start_jadeai():
-    """后台启动 JadeAI Next.js 开发服务器（端口 3000）"""
+    """后台启动 JadeAI Next.js 开发服务器（端口 3002）"""
     global _jadeai_proc, _jadeai_started
     if _jadeai_started:
         return
     _jadeai_started = True
 
     if is_port_open(port=JADEAI_PORT):
-        print("[JadeAI] 已在运行 (端口 3000)")
+        print("[JadeAI] 已在运行 (端口 3002)")
         return
 
     if not os.path.isdir(JADEAI_DIR):
@@ -358,6 +358,7 @@ def _start_jadeai():
     print("[JadeAI] 正在启动 Next.js 开发服务器...")
     try:
         env = os.environ.copy()
+        env["PORT"] = str(JADEAI_PORT)
         _jadeai_proc = _track_subprocess(subprocess.Popen(
             [pnpm, "dev"],
             cwd=JADEAI_DIR,
@@ -376,6 +377,23 @@ def _start_jadeai():
         print(f"[JadeAI] 启动失败: {e}")
 
 
+def _start_presenton():
+    """后台启动 Presenton（Next.js 前端 3000 + FastAPI 后端 18001）"""
+    try:
+        from agent.tools.custom import presenton_bridge as pb
+        if not pb._prepare_env_and_deps():
+            print("[Presenton] 依赖准备失败，跳过自启动")
+            return
+        if not pb._start_nextjs_frontend():
+            print("[Presenton] 前端启动失败")
+            return
+        # 配图模式环境变量先行；ComfyUI 不在此拉起，生成时由工具按需启动
+        if pb._start_server(images=True):
+            print("[Presenton] 已就绪 → 前端 http://localhost:3000 / 后端 http://localhost:18001")
+    except Exception as e:
+        print(f"[Presenton] 自启动失败: {e}")
+
+
 def _load_autostart_config():
     """根据 config/autostart.json 决定启动哪些服务"""
     import json as _json
@@ -391,6 +409,7 @@ def _load_autostart_config():
         "tts": _start_tts,
         "jadeai": _start_jadeai,
         "ollama": _start_ollama,
+        "presenton": _start_presenton,
     }
     for name, starter in mapping.items():
         if cfg.get(name, False):

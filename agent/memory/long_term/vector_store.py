@@ -12,7 +12,8 @@ class VectorStore:
     def __init__(self):
         config = get_rag_config()
         self.collection_name = config.get("collection_name", "agent_memory")
-        self.embedder = Embedder()
+        # 懒加载 Embedder：count() / collection.get() 不需要 embedding，仅在 encode 时创建
+        self._embedder = None
 
         # 持久化目录
         base_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -37,9 +38,15 @@ class VectorStore:
                 metadata={"hnsw:space": "cosine"}
             )
 
+    def _get_embedder(self):
+        """懒加载 Embedder：仅在需要编码文本时才加载重型模型"""
+        if self._embedder is None:
+            self._embedder = Embedder()
+        return self._embedder
+
     def add(self, doc_id: str, document: str, metadata: Dict):
         """插入单条文档（使用 upsert 避免重复 ID 错误）"""
-        embedding = self.embedder.encode(document)
+        embedding = self._get_embedder().encode(document)
         if not embedding:
             return
 
@@ -58,7 +65,7 @@ class VectorStore:
         ids = [d["id"] for d in documents]
         docs = [d["document"] for d in documents]
         metadatas = [d["metadata"] for d in documents]
-        embeddings = self.embedder.encode_batch(docs)
+        embeddings = self._get_embedder().encode_batch(docs)
 
         self.collection.upsert(
             ids=ids,
@@ -72,7 +79,7 @@ class VectorStore:
         检索最相似的文档片段
         返回：[{"document": "...", "metadata": {...}, "distance": 0.3}]
         """
-        query_embedding = self.embedder.encode(query)
+        query_embedding = self._get_embedder().encode(query)
         if not query_embedding:
             return []
 

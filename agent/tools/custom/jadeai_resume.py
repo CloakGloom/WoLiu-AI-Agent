@@ -317,7 +317,7 @@ def _create_resume(args: dict, language: str, template: str) -> str:
             timeout=30,
         )
     except httpx.ConnectError:
-        return "❌ 无法连接 JadeAI 服务 (localhost:3000)，请确保 JadeAI 已启动"
+        return "❌ 无法连接 JadeAI 服务 (localhost:3002)，请确保 JadeAI 已启动"
     except Exception as e:
         return f"❌ 创建简历异常: {type(e).__name__}: {e}"
 
@@ -399,7 +399,7 @@ def _generate_from_file(args: dict, language: str, template: str) -> str:
             timeout=180,
         )
     except httpx.ConnectError:
-        return "❌ 无法连接 JadeAI 服务 (localhost:3000)，请确保 JadeAI 已启动"
+        return "❌ 无法连接 JadeAI 服务 (localhost:3002)，请确保 JadeAI 已启动"
     except Exception as e:
         return f"❌ 生成异常: {type(e).__name__}: {e}"
 
@@ -427,7 +427,7 @@ def _export_pdf(resume_id: str, resume_title: str) -> str:
             timeout=180,
         )
     except httpx.ConnectError:
-        return "❌ 无法连接 JadeAI 服务 (localhost:3000)"
+        return "❌ 无法连接 JadeAI 服务 (localhost:3002)"
     except Exception as e:
         return f"❌ 导出 PDF 异常: {type(e).__name__}: {e}"
 
