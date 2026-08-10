@@ -79,7 +79,25 @@ logging.basicConfig(
     datefmt="%Y-%m-%d %H:%M:%S",
 )
 logger = logging.getLogger("server")
+
+# 屏蔽外部追踪脚本的 404 日志噪音（hybridaction / tracker 等）
+logging.getLogger("darts").setLevel(logging.WARNING)
+_UVICORN_ACCESS = logging.getLogger("uvicorn.access")
+_UVICORN_ACCESS_ORIG = _UVICORN_ACCESS.info
+_UVICORN_NOISE_PATTERNS = [
+    "/hybridaction",
+    "/zybTracker",
+    "/tracker",
+]
+def _filtered_access(msg, *args, **kwargs):
+    s = str(msg)
+    for p in _UVICORN_NOISE_PATTERNS:
+        if p in s:
+            return
+    _UVICORN_ACCESS_ORIG(msg, *args, **kwargs)
+_UVICORN_ACCESS.info = _filtered_access
 _autolabel_pid = None  # autolabel-dock GUI 进程 PID
+_autolabel_starting = False  # 正在启动中（加载 PyTorch + Qt）
 
 # 自启动配置
 AUTOSTART_CFG = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "config", "autostart.json")
@@ -98,6 +116,11 @@ app = FastAPI(title="我流 Agent", version="2.0")
 async def startup_mcp():
     """服务启动时初始化 MCP 工具管理器 + 连接外部 MCP Server"""
     try:
+        # 初始化 MCP 模块系统（设置项目根目录）
+        from agent.mcp_modules import init
+        project_root = os.path.dirname(BASE_DIR)
+        init(project_root=project_root)
+        
         from agent.mcp_client import get_manager
         mgr = get_manager()
         mgr.initialize()
@@ -209,9 +232,10 @@ state = AppState()
 # ==================== WebSocket 发送助手 ====================
 
 async def _send_ws(ws, obj):
-    """在事件循环内向单个 WebSocket 发送 JSON 消息"""
+    """在事件循环内向单个 WebSocket 发送 JSON 消息（断连时静默失败）"""
     try:
-        await ws.send_text(json.dumps(obj, ensure_ascii=False))
+        if ws.client_state.name == "CONNECTED":
+            await ws.send_text(json.dumps(obj, ensure_ascii=False))
     except Exception:
         pass
 
@@ -1976,16 +2000,28 @@ async def _handle_ollama_stop(ws, msg, client_type):
 
 
 async def _handle_autolabel_status(ws, msg, client_type):
-    global _autolabel_pid
+    global _autolabel_pid, _autolabel_starting
     running = _autolabel_pid is not None
-    await _send_ws(ws, {"type": "autolabel_status", "running": running,
-                        "message": "AutoLabel GUI 已运行" if running else "AutoLabel 未启动"})
+    if _autolabel_starting and not running:
+        await _send_ws(ws, {"type": "autolabel_status", "running": False,
+                            "starting": True,
+                            "message": "AutoLabel 正在启动...（加载 PyTorch + Qt，约 5-10 秒）"})
+    elif running:
+        await _send_ws(ws, {"type": "autolabel_status", "running": True,
+                            "message": "AutoLabel GUI 已运行"})
+    else:
+        await _send_ws(ws, {"type": "autolabel_status", "running": False,
+                            "message": "AutoLabel 未启动"})
     return client_type
 
 
 async def _handle_autolabel_start(ws, msg, client_type):
-    global _autolabel_pid
+    global _autolabel_pid, _autolabel_starting
+    _autolabel_starting = True
     logger.info("[autolabel_start] 启动 AutoLabel Dock GUI")
+    await _send_ws(ws, {"type": "autolabel_start_result", "success": True,
+                        "starting": True,
+                        "message": "正在启动 AutoLabel... PyQt5 + PyTorch 加载中，请稍候"})
     import subprocess as _sp
     try:
         import os as _os
@@ -2004,8 +2040,11 @@ async def _handle_autolabel_start(ws, msg, client_type):
             env=env,
         )
         _autolabel_pid = p.pid
-        await _send_ws(ws, {"type": "autolabel_start_result", "success": True})
+        _autolabel_starting = False
+        await _send_ws(ws, {"type": "autolabel_start_result", "success": True,
+                           "message": "AutoLabel 窗口已打开"})
     except Exception as e:
+        _autolabel_starting = False
         await _send_ws(ws, {"type": "autolabel_start_result", "success": False,
                            "message": f"启动失败: {e}"})
     return client_type
