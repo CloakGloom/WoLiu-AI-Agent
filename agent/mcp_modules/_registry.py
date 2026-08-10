@@ -44,9 +44,13 @@ class MCPModuleRegistry:
 
     # ── 扫描与发现 ──
 
-    def scan(self, force: bool = False) -> dict[str, BaseMCPModule]:
+    def scan(self, force: bool = False, project_root: str | None = None) -> dict[str, BaseMCPModule]:
         """
         扫描模块目录，发现所有已安装的模块。
+
+        Args:
+            force: 强制重新扫描
+            project_root: 项目根目录（传递给模块实例，None 时从环境变量读取）
 
         返回 {module_id: module_instance}
         """
@@ -71,7 +75,7 @@ class MCPModuleRegistry:
                 continue
 
             try:
-                module = self._load_module(entry, mod_file, mod_dir)
+                module = self._load_module(entry, mod_file, mod_dir, project_root)
                 if module is not None:
                     self._modules[entry] = module
                     print(f"[MCP] 发现模块: {entry} ({module.meta.name})", file=sys.stderr)
@@ -80,10 +84,10 @@ class MCPModuleRegistry:
 
         return self._modules
 
-    def reload(self):
+    def reload(self, project_root: str | None = None):
         """重新扫描（用于模块安装/卸载后）"""
         self._scanned = False
-        self.scan(force=True)
+        self.scan(force=True, project_root=project_root)
 
     # ── 查询接口 ──
 
@@ -181,7 +185,8 @@ class MCPModuleRegistry:
 
     # ── 内部实现 ──
 
-    def _load_module(self, mod_id: str, mod_file: str, mod_dir: str) -> BaseMCPModule | None:
+    def _load_module(self, mod_id: str, mod_file: str, mod_dir: str,
+                     project_root: str | None = None) -> BaseMCPModule | None:
         """从 module.py 加载一个模块"""
         # 动态导入
         spec = importlib.util.spec_from_file_location(
@@ -200,7 +205,7 @@ class MCPModuleRegistry:
             if (isinstance(attr, type)
                     and issubclass(attr, BaseMCPModule)
                     and attr is not BaseMCPModule):
-                instance = attr(module_dir=mod_dir)
+                instance = attr(module_dir=mod_dir, project_root=project_root)
                 if instance.detect():
                     return instance
                 else:

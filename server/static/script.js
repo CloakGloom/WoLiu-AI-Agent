@@ -1189,9 +1189,7 @@ async function onFileSelected(input) {
                 const sizeStr = data.size < 1024 ? `${data.size}B`
                     : data.size < 1024 * 1024 ? `${(data.size / 1024).toFixed(1)}KB`
                     : `${(data.size / (1024 * 1024)).toFixed(1)}MB`;
-                addMessage('system', `<i class="fas fa-paperclip"></i> 已上传：${data.filename}（${sizeStr}）\n绝对路径：I:/Agent/data/${data.path}`);
-                // 同步通知 Agent
-                wsSend({ type: 'chat', content: `<i class="fas fa-paperclip"></i> 文件已上传：${data.filename}\n绝对路径：I:/Agent/data/${data.path}` });
+                addMessage('system', `<i class="fas fa-paperclip"></i> 已上传：${data.filename}（${sizeStr}）\n绝对路径：I:/Agent/data/${data.path}（发送消息时引用此路径）`);
             } else {
                 addMessage('system', `上传失败：${data.error}`);
             }

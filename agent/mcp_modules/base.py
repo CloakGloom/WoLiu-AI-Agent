@@ -55,9 +55,13 @@ class BaseMCPModule(abc.ABC):
     - get_direct_tools(): 如果模块自身不提供 MCP 但需要通过 HTTP 桥接的工具
     """
 
-    def __init__(self, module_dir: str):
+    def __init__(self, module_dir: str, project_root: str | None = None):
         self._module_dir = module_dir  # 模块所在目录的绝对路径
-        self._project_root = os.path.dirname(os.path.dirname(os.path.dirname(module_dir)))
+        if project_root:
+            self._project_root = project_root
+        else:
+            self._project_root = os.environ.get("WOLIU_PROJECT_ROOT",
+                os.path.dirname(os.path.dirname(os.path.dirname(module_dir))))
 
     # ── 必须实现的属性 ──
 

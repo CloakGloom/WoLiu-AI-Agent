@@ -76,13 +76,17 @@ SCHEMA = {
                     "enum": ["create", "generate"],
                     "description": "create=由你撰写内容生成；generate=解析用户上传的文件生成",
                 },
+                "photo_path": {
+                    "type": "string",
+                    "description": "create 模式：用户上传的证件照/头像图片的绝对路径（可选）。如果用户发了照片，必须传入此参数",
+                },
                 "title": {
                     "type": "string",
                     "description": "简历标题（可选，默认按岗位生成）",
                 },
                 "template": {
                     "type": "string",
-                    "description": "模板名（可选），如 classic/modern/minimal/professional/creative/developer 等，默认 classic",
+                    "description": "简历模板名（必填）。可选模板共60种：classic/modern/minimal/professional/two-column/creative/ats/academic/elegant/executive/developer/designer/startup/formal/infographic/compact/euro/clean/bold/timeline/nordic/corporate/consultant/finance/medical/gradient/metro/material/coder/blocks/magazine/artistic/retro/neon/watercolor/swiss/japanese/berlin/luxe/rose/architect/legal/teacher/scientist/engineer/sidebar/card/zigzag/ribbon/mosaic/... 等。⚠️ 如果用户没有明确说要用哪个模板，你必须先询问用户想选哪个模板，不要自己猜，不要默认填 classic",
                 },
                 "language": {
                     "type": "string",
@@ -188,7 +192,13 @@ def execute(args: dict) -> str:
     """执行简历生成并直接导出 PDF。"""
     action = args.get("action", "create")
     language = (args.get("language") or "zh").strip()
-    template = (args.get("template") or "classic").strip()
+    template = (args.get("template") or "").strip()
+    if not template:
+        return ("❌ 请指定简历模板。可选模板有：classic、modern、minimal、professional、two-column、creative、"
+                "developer、academic、elegant、executive、startup、formal、compact、nordic、corporate、"
+                "gradient、coder、magazine、artistic、retro、neon、swiss、japanese、berlin、luxe、"
+                "architect、legal、scientist、engineer、sidebar、card 等60种模版。\n"
+                "请在 http://localhost:3002/jade/zh/templates 预览后告诉我要用哪个模板。")
 
     if action == "create":
         return _create_resume(args, language, template)
@@ -209,18 +219,22 @@ def _create_resume(args: dict, language: str, template: str) -> str:
     titles = SECTION_TITLES_EN if language == "en" else SECTION_TITLES_ZH
     sections = []
 
-    # 个人信息（照片留空）
+    # 个人信息
+    personal = {
+        "fullName": name,
+        "jobTitle": position,
+        "email": args.get("email") or "",
+        "phone": args.get("phone") or "",
+        "location": args.get("location") or "",
+    }
+    photo = args.get("photo_path") or args.get("photo_url") or ""
+    if photo:
+        personal["photo"] = photo
     sections.append({
         "type": "personal_info",
         "title": titles["personal_info"],
         "visible": True,
-        "content": {
-            "fullName": name,
-            "jobTitle": position,
-            "email": args.get("email") or "",
-            "phone": args.get("phone") or "",
-            "location": args.get("location") or "",
-        },
+        "content": personal,
     })
 
     summary = (args.get("summary") or "").strip()
@@ -304,15 +318,17 @@ def _create_resume(args: dict, language: str, template: str) -> str:
 
     # ── 1. 创建简历 ──
     emit_progress("jadeai_resume", 30, "正在创建简历...")
+    payload = {
+        "title": resume_title,
+        "language": language,
+        "sections": sections,
+    }
+    if template:
+        payload["template"] = template
     try:
         r = httpx.post(
             f"{JADEAI_API}/resume",
-            json={
-                "title": resume_title,
-                "template": template,
-                "language": language,
-                "sections": sections,
-            },
+            json=payload,
             headers=HEADERS,
             timeout=30,
         )
@@ -329,7 +345,7 @@ def _create_resume(args: dict, language: str, template: str) -> str:
         return "❌ 创建简历失败：未获取到简历 ID"
 
     # ── 2. 导出 PDF ──
-    return _export_pdf(resume_id, resume_title)
+    return _export_pdf(resume_id, resume_title, args)
 
 
 # ==================== generate：文件解析生成 ====================
@@ -384,17 +400,19 @@ def _generate_from_file(args: dict, language: str, template: str) -> str:
 
     # ── 调用 JadeAI AI 引擎生成 ──
     emit_progress("jadeai_resume", 30, "正在调用 JadeAI AI 引擎生成简历（约 30-60 秒）...")
+    gen_payload = {
+        "jobTitle": job_title,
+        "yearsOfExperience": exp_years,
+        "skills": _extract_skills(file_content),
+        "language": language,
+        "experience": file_content[:3000],
+    }
+    if template:
+        gen_payload["template"] = template
     try:
         r = httpx.post(
             f"{JADEAI_API}/ai/generate-resume",
-            json={
-                "jobTitle": job_title,
-                "yearsOfExperience": exp_years,
-                "skills": _extract_skills(file_content),
-                "language": language,
-                "template": template,
-                "experience": file_content[:3000],
-            },
+            json=gen_payload,
             headers={**HEADERS, "Accept-Language": language},
             timeout=180,
         )
@@ -412,12 +430,12 @@ def _generate_from_file(args: dict, language: str, template: str) -> str:
     if not resume_id:
         return f"❌ 生成失败：未获取到简历 ID（响应: {str(result)[:200]}）"
 
-    return _export_pdf(resume_id, resume_title)
+    return _export_pdf(resume_id, resume_title, args)
 
 
 # ==================== 公共：导出 PDF 并落地为静态文件 ====================
 
-def _export_pdf(resume_id: str, resume_title: str) -> str:
+def _export_pdf(resume_id: str, resume_title: str, args: dict = None) -> str:
     emit_progress("jadeai_resume", 60, "正在渲染 PDF（服务端 Chrome 排版中）...")
     try:
         r = httpx.get(

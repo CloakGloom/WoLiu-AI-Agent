@@ -1685,25 +1685,34 @@ async def _handle_jadeai_status(ws, msg, client_type):
 
 async def _handle_jadeai_restart(ws, msg, client_type):
     logger.info("[jadeai_restart] 收到重启请求")
-    import subprocess as _sp
-    # 杀进程
-    try:
-        r = _sp.run(["cmd", "/c", 'netstat -ano | findstr :3000 | findstr LISTENING'], capture_output=True, text=True, timeout=10)
-        for line in r.stdout.strip().split("\n"):
-            parts = line.strip().split()
-            if parts and parts[-1].isdigit():
-                pid = int(parts[-1])
-                _sp.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
-                logger.info(f"[jadeai_restart] 已终止 PID={pid}")
-    except Exception as e:
-        logger.info(f"[jadeai_restart] 终止异常: {e}")
-    # 重启
+    import subprocess as _sp, os as _os
+    jadeai_port = str(_cfg_get("services.jadeai.port", 3002))
+    # 杀进程（同时清理 3000 和配置端口）
+    for port in (jadeai_port, "3000"):
+        try:
+            r = _sp.run(["cmd", "/c", f'netstat -ano | findstr :{port} | findstr LISTENING'],
+                       capture_output=True, text=True, timeout=10)
+            for line in r.stdout.strip().split("\n"):
+                parts = line.strip().split()
+                if parts and parts[-1].isdigit():
+                    pid = int(parts[-1])
+                    _sp.run(["taskkill", "/F", "/PID", str(pid)], capture_output=True)
+                    logger.info(f"[jadeai_restart] 已终止端口{port} PID={pid}")
+        except Exception as e:
+            logger.info(f"[jadeai_restart] 终止端口{port}异常: {e}")
+    # 重启：必须传 PORT 环境变量，否则 next dev 默认跑在 3000
     try:
         import shutil
         pnpm = shutil.which("pnpm")
         if pnpm:
+            env = _os.environ.copy()
+            env["PORT"] = jadeai_port
+            # 清除 CodeBuddy shim，避免 next dev 清理临时目录时崩溃
+            for k in list(env):
+                if k.startswith("CODEBUDDY_SAFE_DELETE") or k.startswith("CODEBUDDY_TOOL_CALL"):
+                    env.pop(k, None)
             _sp.Popen([pnpm, "dev"], cwd=_abs("side-projects/JadeAI-0.4.1"),
-                      stdout=_sp.DEVNULL, stderr=_sp.DEVNULL)
+                      stdout=_sp.DEVNULL, stderr=_sp.DEVNULL, env=env)
             logger.info("[jadeai_restart] 已启动新 JadeAI 进程")
             await _send_ws(ws, {"type": "jadeai_restart_result", "success": True,
                                "message": "JadeAI 正在重启，约需 20-40 秒"})
@@ -1871,7 +1880,9 @@ async def _handle_tts_stop(ws, msg, client_type):
 
 
 async def _handle_jadeai_stop(ws, msg, client_type):
-    await _kill_port(3000)
+    jadeai_port = int(_cfg_get("services.jadeai.port", 3002))
+    await _kill_port(jadeai_port)
+    await _kill_port(3000)  # 兜底清理旧端口残留
     await _send_ws(ws, {"type": "jadeai_stop_result", "success": True, "message": "JadeAI 已关闭"})
     return client_type
 
@@ -1943,7 +1954,7 @@ async def _handle_presenton_stop(ws, msg, client_type):
     except Exception:
         backend_alive = False
     still_running = backend_alive or (not killed_backend and not killed_frontend)
-    await _send_ws(ws, {"type": "presenton_status", "running": not still_running,
+    await _send_ws(ws, {"type": "presenton_status", "running": still_running,
                         "message": "Presenton 已关闭" if not still_running else "Presenton 可能未完全关闭"})
     return client_type
 

@@ -29,6 +29,11 @@ def _db():
     os.makedirs(os.path.dirname(_DB), exist_ok=True)
     c = sqlite3.connect(_DB); c.execute("PRAGMA journal_mode=WAL")
     c.execute("CREATE TABLE IF NOT EXISTS reminders(id INTEGER PRIMARY KEY AUTOINCREMENT, remind_at REAL NOT NULL, message TEXT NOT NULL, audio_path TEXT DEFAULT '', created_at REAL DEFAULT(unixepoch()), fired INTEGER DEFAULT 0, cancelled INTEGER DEFAULT 0)")
+    # 兼容旧数据库：为已有表补加 audio_path 列
+    try:
+        c.execute("ALTER TABLE reminders ADD COLUMN audio_path TEXT DEFAULT ''")
+    except sqlite3.OperationalError:
+        pass
     return c
 
 def set_push(cb): global _WS_PUSH; _WS_PUSH = cb
