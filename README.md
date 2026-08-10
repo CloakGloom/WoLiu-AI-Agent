@@ -190,7 +190,7 @@ JadeAI-0.4.1：
 https://github.com/LingyiChen-AI/JadeAI
 
 PPT制作：
-presenton-electron-v0.9.3-beta
+https://github.com/presenton/presenton
 
 Live2D动画：
 https://github.com/ampersante/spine2d-animation-mcp
