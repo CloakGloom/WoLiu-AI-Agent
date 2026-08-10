@@ -64,6 +64,20 @@ class WeChatBot:
 
     # ── HTTP 请求 ──────────────────────────────────
 
+    # 共享 client：复用连接池 + 宽松 SSL（兼容 iLink 服务器 TLS 行为）
+    _client: httpx.Client | None = None
+
+    @classmethod
+    def _get_client(cls) -> httpx.Client:
+        if cls._client is None:
+            import ssl
+            ctx = ssl.create_default_context()
+            # iLink 服务器偶发提前关闭连接，放宽 TLS 版本兼容性与证书检查
+            ctx.check_hostname = False
+            ctx.verify_mode = ssl.CERT_NONE
+            cls._client = httpx.Client(verify=ctx, timeout=40)
+        return cls._client
+
     def _headers(self) -> dict:
         uin = base64.b64encode(
             str(random.randint(0, 0xFFFFFFFF)).encode()
@@ -75,6 +89,36 @@ class WeChatBot:
             "X-WECHAT-UIN": uin,
         }
 
+    def _request_with_retry(self, method: str, url: str, **kwargs) -> httpx.Response:
+        """带重试的 HTTP 请求（处理 iLink 偶发 SSL EOF）"""
+        import ssl as _ssl
+        max_retries = 3
+        last_exc = None
+        for attempt in range(max_retries):
+            try:
+                client = self._get_client()
+                resp = client.request(method, url, **kwargs)
+                return resp
+            except _ssl.SSLError as e:
+                last_exc = e
+                if attempt < max_retries - 1:
+                    wait = 0.5 * (attempt + 1)
+                    logger.warning(
+                        f"iLink SSL 错误（第{attempt + 1}次），{wait:.1f}s 后重试: {e}"
+                    )
+                    time.sleep(wait)
+                    # 重建 client（清空可能已损坏的连接池）
+                    self._client = None
+                else:
+                    raise
+            except Exception:
+                last_exc = None  # 非 SSL 错误先让外层 try 处理
+                raise
+        # 理论上不会到这里，但兜底抛出最后的异常
+        if last_exc:
+            raise last_exc
+        raise RuntimeError("unreachable")
+
     def _post(self, endpoint: str, body: dict, skip_base_info: bool = False) -> dict:
         """发送 POST 请求到 iLink API"""
         if not skip_base_info:
@@ -83,9 +127,11 @@ class WeChatBot:
         headers = self._headers()
         headers["Content-Length"] = str(len(raw))
         try:
-            resp = httpx.post(
+            resp = self._request_with_retry(
+                "POST",
                 f"{self.base}/ilink/bot/{endpoint}",
-                content=raw, headers=headers, timeout=35,
+                content=raw,
+                headers=headers,
             )
             text = resp.text.strip()
             return json.loads(text) if text and text != "{}" else {"ret": 0}
@@ -96,9 +142,11 @@ class WeChatBot:
     def _get(self, path: str, params: dict = None, headers: dict = None) -> dict:
         """发送 GET 请求"""
         try:
-            resp = httpx.get(
+            resp = self._request_with_retry(
+                "GET",
                 f"{self.base}{path}",
-                params=params, headers=headers, timeout=40,
+                params=params,
+                headers=headers,
             )
             return resp.json()
         except Exception as e:

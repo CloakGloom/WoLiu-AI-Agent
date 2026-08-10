@@ -1,6 +1,6 @@
 # WoLiu AI Agent
 
-个人 AI 伴侣系统 —— 基于 ReAct Agent 架构，支持多模态交互、可插拔工具体系、15 维演化人格与长期向量记忆。
+个人 AI 伴侣/系统 —— 基于 ReAct Agent 架构，支持多模态交互、可插拔工具体系、15 维演化人格与长期向量记忆。
 
 ## 核心架构
 
@@ -77,10 +77,12 @@ python run_server.py
 
 启动后访问 **http://localhost:8081** 进入 Web 界面。
 
-### 可选：Docker 部署 Ollama（本地 LLM）
+### 可选：本地部署 Ollama
 
 ```bash
-docker compose --profile ollama up -d
+# Windows: 从 https://ollama.com/download 下载安装
+# 安装后自动运行在 http://localhost:11434
+ollama pull qwen3             # 推荐模型
 ```
 
 ### 手机端（Android Termux）

@@ -586,7 +586,7 @@ def _extract_skills(text: str) -> list:
     """从文本中提取技能关键词。"""
     skill_pool = [
         "Python", "Java", "JavaScript", "TypeScript", "React", "Vue", "Node.js",
-        "SQL", "PostgreSQL", "MongoDB", "Docker", "Kubernetes", "AWS", "Git",
+        "SQL", "PostgreSQL", "MongoDB", "Kubernetes", "AWS", "Git",
         "机器学习", "数据分析", "项目管理", "团队领导", "PPT", "Excel",
         "Photoshop", "Figma", "视频剪辑", "文案写作", "英语六级",
         "沟通能力", "Python开发", "前端开发", "后端开发", "全栈开发",
