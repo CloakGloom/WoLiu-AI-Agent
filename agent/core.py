@@ -335,16 +335,19 @@ def run_agent(messages: list, session_id: str = None,
             # 最终文本回复
             content = content_delta or ""
 
-            # 清除 LLM 可能自行生成的 [IMAGE:...] / [PAPER:...] 标记（避免重复）
+            # 清除 LLM 可能自行生成的 [IMAGE:...] / [PAPER:...] / [VIDEO:...] 标记（避免重复）
             # 统一由下面的工具结果注入逻辑来添加
             content = _re.sub(r'\[IMAGE:[^\]]*\]', '', content)
             content = _re.sub(r'\[PAPER:[^\]]*\]', '', content)
+            content = _re.sub(r'\[VIDEO:[^\]]*\]', '', content)
             content = content.strip()
-            # 从工具结果中收集所有标记（支持多篇论文/多张图片），注入到 LLM 回复之前
+            # 从工具结果中收集所有标记（支持多篇论文/多张图片/多个视频），注入到 LLM 回复之前
             injected_images = []
             injected_papers = []
+            injected_videos = []
             seen_img = set()
             seen_paper = set()
+            seen_video = set()
             for step in steps:
                 if step.get("type") == "tool_result":
                     sc = step.get("content", "")
@@ -358,10 +361,17 @@ def run_agent(messages: list, session_id: str = None,
                         if tag not in seen_paper:
                             seen_paper.add(tag)
                             injected_papers.append(tag)
+                    for m in _re.finditer(r'\[VIDEO:[^\]]*\]', sc):
+                        tag = m.group(0)
+                        if tag not in seen_video:
+                            seen_video.add(tag)
+                            injected_videos.append(tag)
             for img in injected_images:
                 content = img + "\n" + content
             for paper in injected_papers:
                 content = paper + "\n" + content
+            for video in injected_videos:
+                content = video + "\n" + content
 
             # ── 人格过滤 ──
             try:

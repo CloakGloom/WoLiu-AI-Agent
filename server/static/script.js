@@ -358,7 +358,7 @@ function showSentencesWithTTS(sentences, fullContent) {
     function next() {
         if (i >= sentences.length) {
             // 全部句子显示完后，重新渲染完整内容（支持 IMAGE/PAPER 标记）
-            if (/\[(IMAGE|PAPER):/.test(fullContent)) {
+            if (/\[(IMAGE|PAPER|VIDEO):/.test(fullContent)) {
                 var lastRow = rows[rows.length - 1];
                 if (lastRow) {
                     var bubble = lastRow.querySelector('.msg-bubble');

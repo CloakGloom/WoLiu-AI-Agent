@@ -265,7 +265,7 @@ function showSentencesWithTTS(sentences, fullContent) {
     var i = 0, rows = [];
     function next() {
         if (i >= sentences.length) {
-            if (/\[(IMAGE|PAPER):/.test(fullContent)) { var lastRow = rows[rows.length-1]; if (lastRow) { var b = lastRow.querySelector('.msg-bubble'); if (b) b.innerHTML = formatMessageContent(fullContent); } }
+            if (/\[(IMAGE|PAPER|VIDEO):/.test(fullContent)) { var lastRow = rows[rows.length-1]; if (lastRow) { var b = lastRow.querySelector('.msg-bubble'); if (b) b.innerHTML = formatMessageContent(fullContent); } }
             scrollToBottom();
             if (streamTtsRef) speakFullText(fullContent);
             return;

@@ -700,7 +700,8 @@ def execute(arguments: dict) -> str:
 
         if image_url:
             media_type = "视频" if style == "视频" else "图片"
-            return f"[IMAGE:{image_url}]{style_label}{media_type}已生成！（种子: {seed}）"
+            tag = "VIDEO" if style == "视频" else "IMAGE"
+            return f"[{tag}:{image_url}]{style_label}{media_type}已生成！（种子: {seed}）"
         else:
             return "生成完成，但无法获取输出文件。"
 
