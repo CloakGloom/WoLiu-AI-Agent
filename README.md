@@ -178,6 +178,29 @@ pyinstaller AI_Agent.spec
 - `.env` 已加入 `.gitignore`，不会提交到仓库
 - 人格数据使用加密存储
 
+## 集成项目
+语音合成：
+ChatTTS：
+https://github.com/2noise/ChatTTS
+Confucius4-TTS：
+https://github.com/netease-youdao/Confucius4-TTS/blob/main/README.zh.md
+
+简历制作：
+JadeAI-0.4.1：
+https://github.com/LingyiChen-AI/JadeAI
+
+PPT制作：
+presenton-electron-v0.9.3-beta
+
+Live2D动画：
+https://github.com/ampersante/spine2d-animation-mcp
+
+目标检测：
+https://github.com/xzcGit/autolabel-dock
+
+ComfyUI：
+https://github.com/Comfy-Org/ComfyUI
+
 ## 全工具展示
 <img width="1671" height="792" alt="image" src="https://github.com/user-attachments/assets/46fdbb76-7a85-411f-b33c-e4f61d77b1d5" />
 <img width="1737" height="1007" alt="image" src="https://github.com/user-attachments/assets/93549c55-5bc8-4767-a131-719df6df8200" />
