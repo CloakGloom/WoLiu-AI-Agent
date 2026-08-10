@@ -82,7 +82,7 @@ python run_server.py
 ```bash
 # Windows: 从 https://ollama.com/download 下载安装
 # 安装后自动运行在 http://localhost:11434
-ollama pull qwen3             # 推荐模型
+ollama pull qwen3-vl:4b             # 推荐模型
 ```
 
 ### 手机端（Android Termux）
