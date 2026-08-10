@@ -1,93 +1,180 @@
 # WoLiu AI Agent
 
-个人 AI 伴侣 —— FastAPI + WebSocket 后端、ReAct Agent 循环、15 维演化人格、MCP 可插拔工具体系、长期向量记忆。
+个人 AI 伴侣系统 —— 基于 ReAct Agent 架构，支持多模态交互、可插拔工具体系、15 维演化人格与长期向量记忆。
 
-## 架构一览
+## 核心架构
 
 ```
-聊天输入 → ReAct Agent 循环 → LLM (OpenAI 兼容)
-              │
-  ┌───────────┼───────────┐
-  ▼           ▼           ▼
-MCP 工具    15维人格     向量记忆
- (可插拔)   (动态演化)   (ChromaDB)
-  │
-  ├── ComfyUI (图/视频生成)
-  ├── ChatTTS (语音合成)
-  ├── Presenton (PPT 生成)
-  ├── JadeAI  (简历生成)
-  ├── 提醒系统 (定时推送)
-  └── 健康提醒 (喝水/吃饭)
+用户输入 (PC / 手机)
+       │
+       ▼
+┌─────────────────────────────────────┐
+│         ReAct Agent 循环             │
+│   Think → Act → Observe → Think     │
+│         (OpenAI 兼容 LLM)            │
+└─────────────────────────────────────┘
+       │
+       ├── 工具调度中心 ──────────────────
+       │   ├── 内建工具 (计算/搜索/天气/诊断...)
+       │   ├── 自定义工具 (图像生成/PPT/简历/提醒...)
+       │   ├── 硬件工具 (摄像头/麦克风/扬声器)
+       │   └── MCP 工具 (浏览器/标注/动画/...)
+       │
+       ├── 15 维人格系统 ─────────────────
+       │   └── 动态演化 → 行为过滤 → 回复风格
+       │
+       ├── 向量记忆 (ChromaDB) ────────────
+       │   └── 短期滑动窗口 + 长期 RAG 检索
+       │
+       └── 规则引擎 ─────────────────────
+           └── System Prompt 动态构建
 ```
 
-| 特性 | 说明 |
+## 功能特性
+
+| 模块 | 说明 |
 |------|------|
-| ReAct Agent | 基于 OpenAI SDK，流式输出 + 工具调用 |
-| 15 维演化人格 | warmth / sarcasm / sexual_openness 等，随对话自动演化 |
-| 长期记忆 | ChromaDB 向量库 + sentence-transformers RAG |
-| MCP 工具体系 | 文件夹即模块、本地 + 外部 MCP Server、自动发现 |
-| Web UI | 双主题（日间渐变 / 夜间星空）、玻璃拟态、雷达图 |
-| Android | 轻量 WebView 客户端 |
-| 可插拔 | 人格系统一键开关 (`config/settings.json` → `personality_enabled`) |
+| **智能对话** | 多轮对话、流式输出、Markdown 渲染、多会话管理、分支回复 |
+| **工具系统** | 内建 8 个 + 自定义 15+ 个工具，支持运行态启用/禁用 |
+| **MCP 协议** | Model Context Protocol 可插拔工具体系，本地 + 远程 Server |
+| **15 维人格** | warmth / sarcasm / openness 等维度，随对话自动演化 |
+| **长期记忆** | ChromaDB 向量库 + Sentence-Transformers 语义检索 |
+| **设备迁移** | 状态机驱动的 PC ↔ 手机无缝切换，断线自动回迁 |
+| **多媒体生成** | ComfyUI 图像/视频、TTS 语音合成、Presenton PPT、JadeAI 简历 |
+| **提醒系统** | 自然语言定时提醒 + edge-tts 语音播报 + WebSocket 推送 |
+| **健康提醒** | 基于人格状态的喝水/吃饭智能调度 |
+| **双端 UI** | 电脑端 Web 全功能面板 + 手机端轻量界面 |
+| **服务管理** | Web UI 一键启动/停止/重启 ComfyUI、TTS、Ollama 等外部服务 |
 
 ## 快速开始
 
+### 方式一：一键安装（Windows）
+
 ```bash
-# 1. 环境
+setup.bat
+```
+
+自动创建虚拟环境、安装所有依赖、生成默认配置。
+
+### 方式二：手动安装
+
+```bash
+# 1. 创建虚拟环境
 python -m venv .venv
 .venv\Scripts\activate      # Windows
+# source .venv/bin/activate # Linux / macOS
+
+# 2. 安装依赖
 pip install -r requirements.txt
 
-# 2. 配置 API Key
+# 3. 配置 API Key
 cp .env.example .env
-# 编辑 .env 填入 LLM_API_KEY 等，或启动后在设置页 UI 填写
+# 编辑 .env，填入 LLM_API_KEY 等
 
-# 3. 启动
+# 4. 启动
 python run_server.py
 ```
 
-Web UI → `http://localhost:8000`
+启动后访问 **http://localhost:8081** 进入 Web 界面。
+
+### 可选：Docker 部署 Ollama（本地 LLM）
+
+```bash
+docker compose --profile ollama up -d
+```
+
+### 手机端（Android Termux）
+
+```bash
+python run_client.py
+```
+
+## 配置体系
+
+采用多层配置结构，密钥与配置分离：
+
+| 文件 | 用途 | 是否入库 |
+|------|------|----------|
+| `config.yaml` | 主配置文件（服务地址、端口、模型参数） | ✅ |
+| `config.local.yaml` | 本地覆盖配置 | ❌ |
+| `.env` | API Key 等敏感信息 | ❌ |
+| `config/settings.json` | 运行时设置（通过 Web UI 修改） | ❌ |
+| `config/mcp.json` | MCP Server 配置参考 | ✅ |
+| `config/autostart.json` | 服务自启动配置 | ❌ |
+
+默认使用 SiliconFlow 云服务的 DeepSeek-V3 模型，也支持切换为 OpenAI、Ollama 本地模型等任何兼容 OpenAI API 格式的后端。
 
 ## 项目结构
 
 ```
-agent/
-├── core.py                  # ReAct Agent 循环
-├── tools/custom/            # MCP 工具
-│   ├── image_generation.py  # 写实/动漫/视频三模型绘画
-│   ├── reminder.py          # 定时提醒
-│   └── drawing_model_config.py  # 模型路径+下载配置
-├── mcp_modules/             # 可插拔 MCP 模块
-│   ├── personality/         # 15 维人格模块
-│   ├── comfyui/             # AI 绘画
-│   ├── tts/                 # 语音合成
-│   └── ...
-├── personality/             # 代理层 → side-projects/personality/
-├── memory/                  # ChromaDB 向量记忆
-└── rules/                   # AI 规则引擎
+agent/                    # 核心 Agent 逻辑
+├── core.py               # ReAct Agent 主循环
+├── database.py           # SQLite 数据持久化
+├── config.py             # 统一配置加载器
+├── memory/               # 向量记忆系统 (ChromaDB)
+├── personality/          # 15 维人格系统代理层
+├── mcp_client/           # MCP 客户端（工具发现与连接）
+├── mcp_server/           # 本地 MCP Server（Tools/Prompts/Resources/Sampling）
+├── mcp_modules/          # MCP 模块插件（9 个已集成模块）
+├── rules/                # 规则引擎（System Prompt 构建）
+└── tools/                # 工具调度中心
+    ├── builtin/          # 内建工具
+    ├── custom/           # 自定义工具
+    └── hardware/         # 硬件工具（PC/手机自动分发）
 
-server/
-├── app.py                   # FastAPI + WebSocket 主入口
-├── static/                  # 前端 JS/CSS
-├── templates/               # Jinja2 HTML
-└── settings_manager.py      # 设置管理（密钥分离）
+server/                   # Web 服务器
+├── app.py                # FastAPI + WebSocket 主入口（30 个 WS handler）
+├── api.py                # REST API 路由
+├── templates/            # Jinja2 模板（PC / 移动端 / TTS 工作室）
+├── static/               # 前端静态资源（JS / CSS / Spine 动画）
+└── settings_manager.py   # 设置管理器
 
-side-projects/
-└── personality/             # 15 维人格核心
-    ├── dimensions.py        # 15 维定义 + 演化规则
-    ├── evolution.py         # 演化引擎
-    ├── filter.py            # 输出过滤
-    ├── generator.py         # Prompt 生成
-    ├── wellness.py          # 健康提醒调度器
-    └── state.py             # 加密状态存储
+client/                   # 手机端客户端（Termux）
+├── client.py             # HTTP 终端交互客户端
+└── config/               # 客户端配置
+
+side-projects/            # 第三方子项目
+├── personality/          # 15 维人格核心引擎
+├── JadeAI/               # 简历 AI
+├── presenton/            # PPT 生成
+├── ComfyUI/              # AI 绘图
+└── Confucius4-TTS/       # 语音合成
+
+config/                   # 配置文件
+docs/                     # 文档
+migrations/               # Alembic 数据库迁移
+scripts/                  # 辅助脚本
+tests/                    # 测试
+data/                     # 运行时数据（数据库 / 向量库 / 日志）
 ```
+
+## WebSocket 通信
+
+系统通过 WebSocket 实现全双工实时通信，主要消息类型包括：
+
+- **chat** — 核心对话（支持流式输出 `stream_delta` / `stream_done`）
+- **register** — 客户端注册绑定
+- **switch_session** — 多会话切换
+- **migrate_ack** — 设备迁移握手
+- **personality_state** — 人格状态查询
+- **wellness_*** — 健康提醒推送
+- **reminder_fired** — 定时提醒触发
+- **comfyui_* / tts_* / ollama_*** — 外部服务状态管理
+
+## 打包发布
+
+```bash
+pyinstaller AI_Agent.spec
+```
+
+输出在 `dist/` 目录，可双击 `AI_Agent.exe` 直接运行。
 
 ## 安全
 
-- 所有 API Key 写入 `.env`，`settings.json` 不存真实密钥
-- 导出/导入设置自动去除密钥字段
-- `.env` / `.gitignore` 排除，不会提交到仓库
-- 人格数据加密存储
+- 所有 API Key 仅存在于 `.env`，配置文件不存真实密钥
+- 导出/导入设置自动剥离密钥字段
+- `.env` 已加入 `.gitignore`，不会提交到仓库
+- 人格数据使用加密存储
 
 ## License
 
