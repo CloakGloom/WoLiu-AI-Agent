@@ -178,6 +178,22 @@ pyinstaller AI_Agent.spec
 - `.env` 已加入 `.gitignore`，不会提交到仓库
 - 人格数据使用加密存储
 
+## 全工具展示
+<img width="1671" height="792" alt="image" src="https://github.com/user-attachments/assets/46fdbb76-7a85-411f-b33c-e4f61d77b1d5" />
+<img width="1737" height="1007" alt="image" src="https://github.com/user-attachments/assets/93549c55-5bc8-4767-a131-719df6df8200" />
+<img width="666" height="459" alt="image" src="https://github.com/user-attachments/assets/adc486f8-2531-4ad7-afc4-d126a5b48550" />
+<img width="1638" height="1233" alt="image" src="https://github.com/user-attachments/assets/993e1df8-f1b1-4d48-8f22-ac6e9d6b8509" />
+<img width="633" height="594" alt="image" src="https://github.com/user-attachments/assets/50bb5315-86df-4fa7-9b80-ad6016919a98" />
+<img width="732" height="432" alt="image" src="https://github.com/user-attachments/assets/d139b784-ec01-4372-a9c3-a5ba8e6f1dfe" />
+<img width="1116" height="495" alt="image" src="https://github.com/user-attachments/assets/6d0e94ec-df68-4eb9-b871-3900a35d8a6a" />
+<img width="1134" height="675" alt="image" src="https://github.com/user-attachments/assets/28a17c12-f1e2-4b7c-8471-4c29c588b637" />
+<img width="2162" height="840" alt="image" src="https://github.com/user-attachments/assets/7b6baafc-dc17-4fe8-a9a6-2f2b54ae7b03" />
+<img width="1119" height="707" alt="image" src="https://github.com/user-attachments/assets/fa00c611-48af-443d-8f98-549583cc67b7" />
+<img width="1185" height="384" alt="image" src="https://github.com/user-attachments/assets/969e04b8-fc42-4632-88d9-9cc9f39a31e5" />
+<img width="1295" height="627" alt="image" src="https://github.com/user-attachments/assets/d39c4983-49a5-4307-a640-85a6f9b7bbf0" />
+<img width="1361" height="644" alt="image" src="https://github.com/user-attachments/assets/6ffb45f1-cf87-4e51-8c12-549a644c0c1a" />
+<img width="2175" height="840" alt="image" src="https://github.com/user-attachments/assets/a134201d-7b38-400b-be7c-317ac0f78753" />
+
 ## License
 
 见 [LICENSE.md](LICENSE.md)
