@@ -464,7 +464,7 @@ if __name__ == "__main__":
     # FastAPI 单进程启动：直接打印 banner 并启动后台线程
     print(f"""
 ╔══════════════════════════════════════════════╗
-║      AI Agent 跨设备漫游系统（MVP）            ║
+║         WoLiu AI Agent  我流AI助手            ║
 ║                                              ║
 ║  Web 界面:  http://localhost:{WS_PORT}           ║
 ║  WebSocket: ws://{WS_HOST}:{WS_PORT}/ws         ║

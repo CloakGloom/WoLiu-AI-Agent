@@ -1,5 +1,5 @@
 /**
- * AI Agent 跨设备漫游系统 - WebSocket 客户端脚本
+ * WoLiu AI Agent - WebSocket 客户端脚本
  */
 
 // ===== WebSocket 连接 =====
