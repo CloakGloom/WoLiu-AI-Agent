@@ -1,6 +1,7 @@
 """AI Agent launcher - double-click to start, Ctrl+C to exit"""
 import os
 import sys
+import shutil
 import subprocess
 
 # PyInstaller root detection
@@ -8,13 +9,36 @@ if getattr(sys, 'frozen', False):
     PROJECT_ROOT = os.path.dirname(os.path.abspath(sys.executable))
 else:
     PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
-PYTHON_EXE = os.path.join(PROJECT_ROOT, "Anaconda", "Scripts", "python.exe")
 SERVER_SCRIPT = os.path.join(PROJECT_ROOT, "run_server.py")
 
 
+def _find_python():
+    """按优先级查找可用的 Python 解释器：
+    1. .venv（setup.bat 创建的虚拟环境）
+    2. Anaconda（开发者本机环境）
+    3. 系统 PATH 中的 python
+    """
+    candidates = [
+        os.path.join(PROJECT_ROOT, ".venv", "Scripts", "python.exe"),
+        os.path.join(PROJECT_ROOT, "Anaconda", "Scripts", "python.exe"),
+    ]
+    for p in candidates:
+        if os.path.isfile(p):
+            return p
+    # 系统 PATH 中的 python
+    for name in ("python", "python3", "py"):
+        found = shutil.which(name)
+        if found:
+            return found
+    return None
+
+
 def main():
-    if not os.path.isfile(PYTHON_EXE):
-        print(f"[ERROR] Python not found: {PYTHON_EXE}")
+    python_exe = _find_python()
+    if not python_exe:
+        print("[ERROR] 未找到 Python 环境")
+        print("请先运行 setup.bat 安装依赖，或手动安装 Python 3.11+")
+        print("下载: https://www.python.org/downloads/")
         input("Press Enter to exit...")
         return
 
@@ -24,12 +48,12 @@ def main():
         return
 
     print("AI Agent starting...")
-    print(f"   Python: {PYTHON_EXE}")
+    print(f"   Python: {python_exe}")
     print(f"   Script: {SERVER_SCRIPT}")
     print()
 
     proc = subprocess.Popen(
-        [PYTHON_EXE, SERVER_SCRIPT],
+        [python_exe, SERVER_SCRIPT],
         cwd=PROJECT_ROOT,
         env=os.environ.copy(),
     )
