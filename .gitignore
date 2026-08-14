@@ -86,6 +86,7 @@ autolabel_crash.log
 # Third-party / embedded projects (not part of core code)
 side-projects/
 !side-projects/personality/
+WoLiu-MCP/
 .launcher/
 tools/PPTAgent/
 tools/agent-browser-*/

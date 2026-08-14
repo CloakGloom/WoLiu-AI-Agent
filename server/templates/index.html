@@ -915,8 +915,8 @@ function setupStopStart(btnId,type){
     b.onmouseenter=null;b.onmouseleave=null;
     if(typeof ws!=='undefined'&&ws&&ws.readyState===WebSocket.OPEN) ws.send(JSON.stringify({type:type+'_start'}));
     if(type==='tts') ttsUserEnabled=true;
-    // 启动后轮询检测（最多等 60s），真正就绪才显示 "已就绪"
-    _pollServiceStart(type,b,0,30);
+    // 启动后轮询检测（60s / 120s），真正就绪才显示 "已就绪"
+    _pollServiceStart(type,b,0,type==='tts'?60:30);
   };
   b.onclick=b._doStart;
   // 初始加载时查一次真实状态

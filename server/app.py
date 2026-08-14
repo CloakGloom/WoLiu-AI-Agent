@@ -1661,8 +1661,14 @@ async def _handle_tts_restart(ws, msg, client_type):
         import os as _os
         env = _os.environ.copy()
         env["HF_ENDPOINT"] = _cfg_hf_endpoint()
+        import os as _os2
+        log_dir = _os2.path.join(_os2.path.dirname(TTS_DIR), "..", "data"); _os2.makedirs(log_dir, exist_ok=True)
+        tts_log = _os2.path.join(log_dir, "tts_server.log")
+        with open(tts_log, "a", encoding="utf-8") as _f:
+            _f.write(f"\n=== TTS 启动 {_os2.environ.get('COMPUTERNAME','')} {__import__('datetime').datetime.now().isoformat()} ===\n")
+        _lf = open(tts_log, "a", encoding="utf-8")
         _sp.Popen([TTS_PYTHON, "server.py", "--port", "8000"], cwd=TTS_DIR, env=env,
-                  stdout=_sp.DEVNULL, stderr=_sp.DEVNULL)
+                  stdout=_lf, stderr=_lf)
         logger.info("[tts_restart] 已启动新 TTS 进程")
         await _send_ws(ws, {"type": "tts_restart_result", "success": True,
                            "message": "TTS 正在重启，约需 30-60 秒"})
